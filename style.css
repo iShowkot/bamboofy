@@ -364,7 +364,7 @@ body.film .walkpad { display: none !important; }
 .sp-bowl { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: sp-draw .5s .45s var(--ease) forwards; }
 .sp-leaf { fill: var(--gold); transform-box: fill-box; transform-origin: 0% 100%; animation: sp-leaf .5s .8s cubic-bezier(.3,1.5,.5,1) both; }
 .splash-word { font: 800 44px/1 "Manrope", var(--font); letter-spacing: -.04em; color: var(--text); margin-top: 18px; animation: sp-up .5s .9s var(--ease) both; }
-.splash-by { font-size: 11px; color: var(--text-2); margin-top: 10px; animation: sp-up .5s 1.05s var(--ease) both; }
+.splash-by { font-size: 11px; color: var(--text-2); margin-top: 28px; animation: sp-up .5s 1.05s var(--ease) both; }
 .splash-tag { font-size: 13px; color: var(--text-3); margin-top: 22px; animation: sp-up .5s 1.15s var(--ease) both; }
 .hut { width: 330px; height: 150px; margin-top: 26px; overflow: visible; }
 .hut-ground { stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; fill: none; stroke-dasharray: 100; stroke-dashoffset: 100; animation: sp-draw .5s ease-out forwards; }
