@@ -318,7 +318,7 @@ export class Viewer {
     const nm = new Map(model.nodes.map(n => [n.id, n]));
     const disp = state.disp && this.deformScale ? state.disp : null;
     const P = id => {
-      const n = nm.get(id);
+      const n = nm.get(id) || model.nodes.find(x => x.id === id);
       const v = new THREE.Vector3(n.x, n.y, n.z);
       if (disp) { const d = disp.get(id); if (d) v.add(new THREE.Vector3(d[0], d[1], d[2]).multiplyScalar(this.deformScale)); }
       return v;
@@ -606,6 +606,7 @@ export class Viewer {
       p.needsUpdate = true;
     }
     if (this.onFrame) this.onFrame(dt);
+    for (const f of this.tickers || []) f(dt);
     this.renderer.render(this.scene, this.camera);
   }
 

@@ -66,11 +66,7 @@
     </div>
     <div id="genList"></div>
     <h3>Pole by pole</h3>
-    <div class="field"><label>Species</label><select id="newSpecies"></select></div>
-    <div class="field"><label>Culms per pole</label><input type="number" id="newBundle" min="1" max="9" value="1"></div>
-    <div class="field"><label>Joint</label><select id="newJoint"></select></div>
-    <div class="field"><label>Work plane height <output id="whOut">3.0 m</output></label><input type="range" id="workH" min="0" max="20" step="0.25" value="3"></div>
-    <label class="check"><input type="checkbox" id="snapGround"> Place on the ground instead of the work plane</label>
+    <p class="hint">Choose <b>Pole</b> on the canvas (or press P) and draw straight in 3D. Poles snap to the red, green and up axes, to joints and to midpoints. Type a length and press Enter for an exact pole.</p>
   </section>
   <section data-pane="site" hidden>
     <h3>Hillside</h3>
@@ -109,6 +105,23 @@
     <button data-tool="delete" title="Delete pole or node (X)"><span>✕</span>Delete</button>
   </div>
   <div class="hud" id="hud"></div>
+  <div class="polebar" id="polebar" hidden>
+    <div class="pb-row">
+      <select id="pbSpecies" title="Species for new poles" aria-label="Species for new poles"></select>
+      <div class="pb-seg" id="pbCulms" role="group" aria-label="Culms per pole" title="Culms per pole (bundle)"><button data-c="1" class="on">1</button><button data-c="2">2</button><button data-c="3">3</button><button data-c="4">4</button><button data-c="5">5</button></div><span class="pb-cap">culms</span>
+      <select id="pbJoint" title="Joint type for new joints" aria-label="Joint type for new joints"></select>
+    </div>
+    <div class="pb-row">
+      <div class="pb-seg pb-axis" id="pbAxis" role="group" aria-label="Lock direction">
+        <button data-ax="" class="on" title="Free: snap to whatever is near">Free</button>
+        <button data-ax="x" class="ax-x" title="Lock to the red axis (→ or X)">Red</button>
+        <button data-ax="y" class="ax-y" title="Lock to the green axis (← or Y)">Green</button>
+        <button data-ax="z" class="ax-z" title="Lock straight up (↑ or Z)">Up</button>
+      </div>
+      <button class="pb-toggle on" id="pbSnap" title="Snapping on/off (hold Alt to draw free)">Snap</button>
+      <label class="pb-len">Length <input id="pbLen" inputmode="decimal" placeholder="—" aria-label="Pole length in metres; type and press Enter"> m</label>
+    </div>
+  </div>
   <div class="walkpad" id="walkpad" hidden>
     <button data-w="f">▲</button><button data-w="l">◀</button><button data-w="b">▼</button><button data-w="r">▶</button>
     <button class="exit" id="bWalkExit">Exit walk</button>

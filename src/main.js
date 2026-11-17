@@ -7,6 +7,10 @@ import { analyse, breakIt, effectiveJoint, effectiveSupport } from './analysis.j
 import { defaultScenario } from './loads.js';
 import { cutList, billOfMaterials, bomCSV, toCSV, download, kitHTML } from './exports.js';
 import { terrainHeight } from './terrain.js';
+import { PoleDrawer } from './draw.js';
+import { ViewCube } from './viewcube.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { Object3D as THREE_Object } from 'three';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -152,6 +156,7 @@ function renderStatus() {
 function select(sel) {
   app.sel = sel;
   viewer.highlight = sel;
+  attachGizmo(sel?.kind === 'node' && app.tool === 'select' ? sel.id : null);
   render();
 }
 
@@ -180,6 +185,7 @@ function renderInspector() {
       <div class="field" style="flex:1"><label>Wall mm</label><input type="number" id="iT" value="${m.t ?? sp.t}"></div>
       <div class="field" style="flex:1"><label>Culms</label><input type="number" id="iB" min="1" max="9" value="${m.bundle || 1}"></div></div>
       <label class="check"><input type="checkbox" id="iBent" ${m.bent ? 'checked' : ''}> Heat-bent culm</label>
+      <p class="hint">To move an end, click its joint: coloured arrows appear. Drag one to move along that axis.</p>
       ${m.gen ? '<p class="hint">Edits to generated poles are replaced when its generator changes. Bake the generator to keep them.</p>' : ''}
       <button class="btn" id="iDel">Delete pole</button>`;
     const upd = fn => { snapshot(); fn(); commit(); };
@@ -449,18 +455,81 @@ function replayBreak() {
 // ---------- tools ----------
 function setTool(t) {
   app.tool = t;
-  app.poleStart = null;
-  viewer.setGhost(null); viewer.setCursor(null);
+  drawer.reset();
   $$('.tools button').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
-  viewer.setWorkPlane(t === 'pole' && !$('#snapGround').checked, +$('#workH').value + groundAtTarget());
+  $('#polebar').hidden = t !== 'pole';
+  if (t !== 'select') attachGizmo(null);
+  else if (app.sel?.kind === 'node') attachGizmo(app.sel.id);
   const hints = {
-    select: '', pole: 'Click a joint or a point to start a pole, click again to finish. Esc to stop.',
+    select: '', pole: 'Click the ground or a joint to start. Follow the coloured guides · type a length + Enter · arrows lock a direction · Esc to finish.',
     support: 'Click a joint to add or remove a stone plinth.', load: 'Click a joint to hang 5 kN on it (edit in the inspector).',
     settle: 'Click the plinth the hillside slips away from.', delete: 'Click a pole or joint to delete it.'
   };
   $('#hud').textContent = hints[t];
 }
-function groundAtTarget() { return 0; }
+
+// ---------- pole drawing ----------
+const poleOpts = { species: 'borak', bundle: 1, joint: 'fishmouth' };
+function splitMemberAt(memberId, p) {
+  const m = app.model.members.find(x => x.id === memberId);
+  if (!m) return null;
+  const n = addNode(app.model, round(p.x), round(p.y), round(p.z), { joint: poleOpts.joint });
+  const { a, b, id, ...props } = m;
+  app.model.members = app.model.members.filter(x => x.id !== memberId);
+  addMember(app.model, a, n, props); addMember(app.model, n, b, props);
+  return n;
+}
+function poleCommit(start, c) {
+  snapshot();
+  const make = (spec, ground) => addNode(app.model, round(spec.x), round(spec.y), round(spec.z), { joint: poleOpts.joint, support: ground ? 'plinth' : null });
+  const a = start.node ?? make(start.p, start.ground);
+  let b;
+  if (c.kind === 'joint') b = c.node;
+  else if (c.kind === 'mid') b = splitMemberAt(c.member, c.p);
+  else b = make(c.p, c.kind === 'ground');
+  const id = addMember(app.model, a, b, { species: poleOpts.species, bundle: poleOpts.bundle });
+  commit();
+  if (id) { app.sel = { kind: 'member', id }; viewer.highlight = app.sel; }
+  return b;
+}
+
+// ---------- move arrows for a selected joint ----------
+let gizmo, gizmoProxy, gizmoNode = null, gizmoDragging = false;
+function setupGizmo() {
+  gizmo = new TransformControls(viewer.camera, viewer.renderer.domElement);
+  gizmo.setTranslationSnap(0.05);
+  gizmo.setSize(0.85);
+  gizmoProxy = new THREE_Object();
+  viewer.scene.add(gizmoProxy);
+  const helper = gizmo.getHelper();
+  viewer.scene.add(helper);
+  // match Bamboofy's convention: blue = up, green = across (three's Y is up)
+  const seen = new Set();
+  helper.traverse(o => {
+    const m = o.material; if (!m || seen.has(m) || !m.color) return; seen.add(m);
+    const hex = m.color.getHex();
+    if (hex === 0x00ff00) m.color.setHex(0x2f6fd8); else if (hex === 0x0000ff) m.color.setHex(0x3f9b46); else if (hex === 0xff0000) m.color.setHex(0xd2412f);
+  });
+  gizmo.addEventListener('dragging-changed', e => {
+    viewer.controls.enabled = !e.value;
+    gizmoDragging = e.value;
+    if (e.value) snapshot();
+    else { save(); clearBreak(); analyseSoon(); }
+  });
+  gizmo.addEventListener('objectChange', () => {
+    const n = app.model.nodes.find(x => x.id === gizmoNode);
+    if (!n) return;
+    n.x = round(gizmoProxy.position.x); n.y = round(gizmoProxy.position.y); n.z = round(gizmoProxy.position.z);
+    analyseSoon();
+  });
+}
+function attachGizmo(nodeId) {
+  if (!gizmo) return;
+  const n = nodeId != null && app.model.nodes.find(x => x.id === nodeId);
+  gizmoNode = n ? nodeId : null;
+  if (n) { gizmoProxy.position.set(n.x, n.y, n.z); gizmo.attach(gizmoProxy); }
+  else gizmo.detach();
+}
 
 function pointFromPick(hit) {
   if (!hit) return null;
@@ -471,14 +540,17 @@ function pointFromPick(hit) {
 function bindViewport() {
   const el = viewer.renderer.domElement;
   let down = null;
-  el.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
+  el.addEventListener('pointerdown', e => { down = gizmo?.axis ? null : { x: e.clientX, y: e.clientY }; });
   el.addEventListener('pointermove', e => {
     if (viewer.walk) return;
-    if (app.tool === 'pole') {
-      const hit = viewer.pick(e, $('#snapGround').checked ? ['node', 'ground'] : ['node', 'plane']);
-      viewer.setCursor(hit?.point || null);
-      if (app.poleStart && hit) viewer.setGhost(app.poleStart.p, hit.point);
-    }
+    if (app.tool === 'pole' && !(e.buttons & 1)) drawer.move(e);
+  });
+  el.addEventListener('pointerleave', () => { if (app.tool === 'pole') { drawer.clear(); drawer.label.hidden = true; } });
+  el.addEventListener('dblclick', e => {
+    if (viewer.walk) return;
+    if (app.tool === 'pole') { drawer.key({ key: 'Escape', type: 'keydown' }); return; }
+    const hit = viewer.pick(e, ['node', 'member', 'ground']);
+    if (hit?.point) viewcube.centerOn(hit.point.clone ? hit.point.clone() : hit.point);
   });
   el.addEventListener('pointerup', e => {
     if (!down || viewer.walk) return;
@@ -490,19 +562,7 @@ function bindViewport() {
       const hit = viewer.pick(e, ['node', 'member']);
       select(hit ? { kind: hit.kind, id: hit.id } : null);
     } else if (t === 'pole') {
-      const hit = viewer.pick(e, $('#snapGround').checked ? ['node', 'ground'] : ['node', 'plane']);
-      const pt = pointFromPick(hit);
-      if (!pt) return;
-      if (!app.poleStart) { app.poleStart = pt; return; }
-      snapshot();
-      const onGround = p => $('#snapGround').checked && !p.node;
-      const idOf = p => p.node ?? addNode(app.model, round(p.p.x), round(p.p.y + (onGround(p) ? 0.45 : 0)), round(p.p.z), { joint: $('#newJoint').value, support: onGround(p) ? 'plinth' : null });
-      const a = idOf(app.poleStart), b = idOf(pt);
-      const mid = addMember(app.model, a, b, { species: $('#newSpecies').value, bundle: +$('#newBundle').value || 1 });
-      app.poleStart = { node: b, p: hit.point };
-      viewer.setGhost(null);
-      select(mid ? { kind: 'member', id: mid } : null);
-      commit();
+      drawer.click(e);
     } else if (t === 'support' || t === 'load' || t === 'settle') {
       const hit = viewer.pick(e, ['node']);
       if (!hit) return;
@@ -688,14 +748,33 @@ function maybeTour() { let seen = false; try { seen = !!localStorage.getItem('ba
 
 // ---------- boot ----------
 const viewer = new Viewer($('#viewport'));
+const drawer = new PoleDrawer(viewer, {
+  commit: poleCommit,
+  stockLength: () => lib()[poleOpts.species]?.stock,
+  onLength: len => { const el = $('#pbLen'); if (document.activeElement !== el) el.placeholder = len ? len.toFixed(2) : '—'; },
+  onLock: ax => $$('#pbAxis button').forEach(b => b.classList.toggle('on', (b.dataset.ax || null) === ax))
+});
+const viewcube = new ViewCube(viewer, $('#stage'));
+viewer.tickers = [() => viewcube.sync(), () => { if (gizmoNode != null && !gizmoDragging) { const n = app.model?.nodes.find(x => x.id === gizmoNode); if (n) gizmoProxy.position.set(n.x, n.y, n.z); else attachGizmo(null); } }];
 window.bamboofy = { app, viewer };
 
 function boot() {
   // selects
   $('#genType').innerHTML = Object.entries(GENERATORS).map(([k, g]) => `<option value="${k}">${g.name}</option>`).join('');
-  const fillSpecies = () => { $('#newSpecies').innerHTML = Object.entries(lib()).map(([k, s]) => `<option value="${k}">${s.name} — ${s.latin}</option>`).join(''); };
-  $('#newJoint').innerHTML = Object.entries(JOINTS).map(([k, j]) => `<option value="${k}">${j.name}</option>`).join('');
-  $('#newJoint').value = 'fishmouth';
+  const fillSpecies = () => { $('#pbSpecies').innerHTML = Object.entries(lib()).map(([k, s]) => `<option value="${k}">${s.name}</option>`).join(''); };
+  $('#pbJoint').innerHTML = Object.entries(JOINTS).map(([k, j]) => `<option value="${k}">${j.name}</option>`).join('');
+  $('#pbJoint').value = 'fishmouth';
+  $('#pbSpecies').onchange = e => { poleOpts.species = e.target.value; };
+  $('#pbJoint').onchange = e => { poleOpts.joint = e.target.value; };
+  for (const b of $$('#pbCulms button')) b.onclick = () => { poleOpts.bundle = +b.dataset.c; $$('#pbCulms button').forEach(x => x.classList.toggle('on', x === b)); };
+  for (const b of $$('#pbAxis button')) b.onclick = () => drawer.setLock(b.dataset.ax || null);
+  $('#pbSnap').onclick = () => { drawer.snap = !drawer.snap; $('#pbSnap').classList.toggle('on', drawer.snap); };
+  $('#pbLen').addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { if (!drawer.commitLength(e.target.value)) toast('Click a start point first'); e.target.value = ''; e.target.blur(); }
+    if (e.key === 'Escape') { e.target.value = ''; e.target.blur(); }
+  });
+  setupGizmo();
 
   try {
     const s = localStorage.getItem(STORE);
@@ -706,7 +785,7 @@ function boot() {
   const first = !app.model;
   if (first) { app.model = emptyModel(); PRESETS.jhiriPavilion.build(app.model); runGenerators(app.model); }
   fillSpecies();
-  $('#newSpecies').value = 'borak';
+  $('#pbSpecies').value = 'borak';
   bindScenario(); bindSite(); bindViewport();
   afterLoad(true);
   viewer.waterRise = app.scenario.flood.on ? app.scenario.flood.rise : 0;
@@ -778,12 +857,12 @@ function boot() {
     $$('#left [data-pane]').forEach(p => { p.hidden = p.dataset.pane !== b.dataset.tab; });
   });
   $$('.tools button').forEach(b => b.onclick = () => setTool(b.dataset.tool));
-  $('#workH').oninput = e => { $('#whOut').textContent = (+e.target.value).toFixed(1) + ' m'; setTool(app.tool); };
-  $('#snapGround').onchange = () => setTool(app.tool);
   $('#bBreak').onclick = runBreak;
 
+  window.addEventListener('keyup', e => { if (app.tool === 'pole') drawer.key(e); });
   window.addEventListener('keydown', e => {
     if (e.target.matches('input, select, textarea')) return;
+    if (app.tool === 'pole' && $('#tour').hidden && !app.film && drawer.key(e)) { e.preventDefault(); return; }
     const k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); exportAction('json'); return; }
@@ -793,7 +872,7 @@ function boot() {
     if (e.key === '[') { togglePanel('left'); return; }
     if (e.key === ']') { togglePanel('right'); return; }
     if (viewer.walk) { if (k === 'escape') toggleWalk(false); return; }
-    if (k === 'escape') { if (app.poleStart) { app.poleStart = null; viewer.setGhost(null); } else setTool('select'); }
+    if (k === 'escape') setTool('select');
     const toolKeys = { v: 'select', p: 'pole', f: 'support', l: 'load', g: 'settle', x: 'delete' };
     if (toolKeys[k]) setTool(toolKeys[k]);
     if (k === '1') $('.seg [data-mode=drafting]').click();
