@@ -9,7 +9,7 @@ const PLINTH = 0.45;
 export const AXES = {
   x: { d: new THREE.Vector3(1, 0, 0), color: 0xd2412f, name: 'red axis' },
   y: { d: new THREE.Vector3(0, 0, 1), color: 0x3f9b46, name: 'green axis' },
-  z: { d: new THREE.Vector3(0, 1, 0), color: 0x2f6fd8, name: 'straight up' }
+  z: { d: new THREE.Vector3(0, 1, 0), color: 0x2f6fd8, name: 'vertical' }
 };
 const COL = { par: 0xc23bb3, perp: 0xc23bb3, slope: 0x8a5a2b, free: 0x2b2520, joint: 0x1e5bd8, mid: 0x1e9bb3, ground: 0x6b7d3a };
 
@@ -107,7 +107,7 @@ export class PoleDrawer {
       if (h.lengthSq() > 1e-6) { h.normalize(); const slope = Math.hypot(gx, gz) / (2 * e); dirs.push({ key: 'slope', d: new THREE.Vector3(-h.x, -slope, -h.z).normalize(), color: COL.slope, name: 'along the slope' }); }
     }
     const usable = lock ? dirs.filter(d => d.key === lock) : (snapping ? dirs : []);
-    let bestDir = null, bestD = lock ? Infinity : 16, bestT = 0;
+    let bestDir = null, bestD = lock ? Infinity : 24, bestT = 0;
     for (const dr of usable) {
       for (const sgn of [1]) {
         const t = closestOnLineToRay(P0, dr.d, ray);
@@ -121,22 +121,39 @@ export class PoleDrawer {
       let t = bestT;
       if (snapping) t = Math.round(t / 0.05) * 0.05;
       if (Math.abs(t) < 0.05) t = 0.05 * Math.sign(t || 1);
-      return this.finish({ p: P0.clone().addScaledVector(bestDir.d, t), kind: 'axis', axis: bestDir });
+      const p = P0.clone().addScaledVector(bestDir.d, t);
+      const gy = this.ground(p.x, p.z) + PLINTH;
+      if (p.y <= gy + 0.02 && bestDir.d.y * Math.sign(t) < 0) {
+        // going down: stop on the ground and stand on a plinth
+        const k = (P0.y - gy) / Math.max(1e-6, -bestDir.d.y * Math.sign(t));
+        const q = P0.clone().addScaledVector(bestDir.d, Math.sign(t) * k);
+        q.y = this.ground(q.x, q.z) + PLINTH;
+        return this.finish({ p: q, kind: 'ground', ground: true, axis: bestDir });
+      }
+      return this.finish({ p, kind: 'axis', axis: bestDir });
     }
 
-    // 4. free point: the ground under the cursor (stay level with an axis lock, or type "4<0")
-    if (tHit) {
+    // 4. free point: whatever is nearer under the cursor, the ground or an upright
+    //    plane through the start that faces you. Move the mouse up and the pole rises.
+    const fwd = new THREE.Vector3(); this.v.camera.getWorldDirection(fwd); fwd.y = 0;
+    if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+    fwd.normalize();
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(fwd, P0);
+    const pHit = ray.intersectPlane(plane, new THREE.Vector3());
+    const dPlane = pHit ? pHit.distanceTo(ray.origin) : Infinity, dGround = tHit ? tHit.distance : Infinity;
+    const planeUnder = pHit && pHit.y < this.ground(pHit.x, pHit.z) + PLINTH;
+    if (tHit && (dGround <= dPlane || planeUnder)) {
       const g = tHit.point.clone(); g.y = this.ground(g.x, g.z) + PLINTH;
       return this.finish({ p: g, kind: 'ground', ground: true });
     }
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -P0.y);
-    const pHit = ray.intersectPlane(plane, new THREE.Vector3());
     if (!pHit) return null;
     const v = pHit.clone().sub(P0);
-    if (snapping) {
+    if (snapping && v.length() > 1e-3) {
+      // 15° steps of tilt within the plane, 5 cm lengths
+      const side = new THREE.Vector3(-fwd.z, 0, fwd.x);
       const L = Math.round(v.length() / 0.05) * 0.05;
-      const az = Math.round(Math.atan2(v.z, v.x) / (Math.PI / 12)) * (Math.PI / 12);
-      v.set(Math.cos(az) * L, 0, Math.sin(az) * L);
+      const ang = Math.round(Math.atan2(v.y, v.dot(side)) / (Math.PI / 12)) * (Math.PI / 12);
+      v.copy(side.multiplyScalar(Math.cos(ang) * L)).add(new THREE.Vector3(0, Math.sin(ang) * L, 0));
     }
     return this.finish({ p: P0.clone().add(v), kind: 'free' });
   }
@@ -205,10 +222,16 @@ export class PoleDrawer {
         cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), c.vec.clone().normalize());
         g.add(cyl);
       }
-      // inference guide along the snapped direction
-      if (c.kind === 'axis') {
+      // the three axes through the start are always shown faintly; the snapped one is bold
+      for (const [k, a] of Object.entries(AXES)) {
+        const on = (c.kind === 'axis' || c.kind === 'ground') && c.axis?.key === k;
+        const geo = new THREE.BufferGeometry().setFromPoints([P0.clone().addScaledVector(a.d, -30), P0.clone().addScaledVector(a.d, 30)]);
+        const mat = new THREE.LineDashedMaterial({ color: a.color, dashSize: on ? 0.3 : 0.15, gapSize: on ? 0.12 : 0.2, depthTest: false, transparent: true, opacity: on ? 0.95 : 0.35 });
+        const line = new THREE.Line(geo, mat); line.computeLineDistances(); line.renderOrder = 10; g.add(line);
+      }
+      if (c.kind === 'axis' && !AXES[c.axis.key]) {
         const d = c.axis.d;
-        add([P0.clone().addScaledVector(d, -40), P0.clone().addScaledVector(d, 40)], c.axis.color, true);
+        add([P0.clone().addScaledVector(d, -30), P0.clone().addScaledVector(d, 30)], c.axis.color, true);
       }
       // local metre grid on the level plane through the start
       const grid = new THREE.GridHelper(10, 10, 0x8a7d6a, 0xb8ac93);
@@ -226,10 +249,10 @@ export class PoleDrawer {
     let text;
     if (c.kind === 'joint') text = `Joint @${c.node}`;
     else if (c.kind === 'mid') text = `Midpoint of pole #${c.member}`;
-    else if (c.kind === 'ground') text = this.start ? 'Ground · stone plinth' : 'Start on the ground · stone plinth';
-    else if (c.kind === 'axis') text = `On ${c.axis.name}`;
+    else if (c.kind === 'ground') text = this.start ? (c.axis?.key === 'z' ? 'Straight down to the ground · plinth' : 'Ground · stone plinth') : 'Start here on the ground · stone plinth';
+    else if (c.kind === 'axis') text = c.axis.key === 'z' ? (c.vec.y >= 0 ? 'Straight up' : 'Straight down') : `On ${c.axis.name}`;
     else if (c.kind === 'typed') text = 'Typed';
-    else text = 'Level';
+    else text = 'Free · slide onto a coloured line to snap';
     const bits = [text];
     if (this.start && c.len) bits.push(`${c.len.toFixed(2)} m`);
     if (height > 0.3 && c.kind !== 'ground') bits.push(`+${height.toFixed(2)} m high`);
@@ -238,9 +261,10 @@ export class PoleDrawer {
     if (this.start && stock && c.len > stock) warn = `longer than a ${stock} m culm, needs a splice`;
     this.label.innerHTML = `<span class="sw" style="background:#${new THREE.Color(color).getHexString()}"></span>${bits.join(' · ')}${warn ? `<em>${warn}</em>` : ''}${this.typed ? `<b>⌨ ${this.typed}▌</b>` : ''}`;
     this.label.classList.toggle('warn', !!warn);
-    this.label.style.left = Math.min(rect.width - 220, s.x + 16) + 'px';
-    this.label.style.top = Math.max(8, s.y - 34) + 'px';
     this.label.hidden = s.behind;
+    const lw = this.label.offsetWidth || 220;
+    this.label.style.left = Math.max(8, Math.min(rect.width - lw - 8, s.x + 16)) + 'px';
+    this.label.style.top = Math.max(8, s.y - 34) + 'px';
     this.host.onLength?.(this.start ? c.len : null);
   }
 
