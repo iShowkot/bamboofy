@@ -419,7 +419,7 @@ function startCollapse() {
   const drift = new Map(nodes.map(n => [n.id, [(Math.random() - 0.5) * 0.6, 0, (Math.random() - 0.5) * 0.6]]));
   viewer.deformScale = 1;
   viewer.onFrame = dt => {
-    t += dt;
+    t += dt * (app.film ? 0.5 : 1);
     if (t > 2.2) { viewer.onFrame = null; return; }
     const disp = new Map();
     for (const n of nodes) {
@@ -442,7 +442,7 @@ function replayBreak() {
     i++;
     if (i >= n || i > 14) { clearInterval(app.replayTimer); app.replayTimer = null; return; }
     showBreakStep(i);
-  }, 900);
+  }, app.film ? 1700 : 900);
 }
 
 // ---------- tools ----------
@@ -559,7 +559,7 @@ function presetIcon(key) {
 }
 function openGallery() {
   $('#presetCards').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<button class="card" data-p="${k}">${presetIcon(k)}<div><b>${p.name}</b><small>${p.sub}</small></div></button>`).join('');
-  for (const b of $$('#presetCards .card')) b.onclick = () => { loadPreset(b.dataset.p); $('#gallery').hidden = true; };
+  for (const b of $$('#presetCards .card')) b.onclick = () => { loadPreset(b.dataset.p); $('#gallery').hidden = true; maybeTour(); };
   $('#gallery').hidden = false;
 }
 function loadPreset(key) {
@@ -607,6 +607,68 @@ function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
   clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 2600);
 }
+
+// ---------- film mode ----------
+function setFilm(on = !app.film) {
+  if (on && viewer.walk) toggleWalk(false);
+  app.film = on;
+  document.body.classList.toggle('film', on);
+  document.body.classList.remove('show-left', 'show-right');
+  viewer.controls.autoRotate = on && $('#fOrbit').classList.contains('on');
+  viewer.controls.autoRotateSpeed = 0.45;
+  $('#filmName').textContent = app.model.name;
+  if (on) { app.sel = null; viewer.highlight = null; setTool('select'); render(); toast('Film mode: H or Esc to exit · B to break it · O to orbit'); }
+  setTimeout(() => viewer.resize(), 30);
+}
+
+// ---------- guided tour ----------
+const TOUR = [
+  { sel: '#viewport', title: 'Welcome to Bamboofy', text: 'This is the Jhiri Pavilion: bundled bamboo arches leaping a hill stream. Drag to orbit, scroll to zoom. Every pole is a real culm, with its nodes.' },
+  { sel: '#genList', side: 'left', title: 'Shape it', text: 'Generators are parametric forms. Drag any slider (span, twist, culms per bundle) and the physics re-solves instantly.' },
+  { sel: '#verdict', side: 'right', title: 'Read it', text: 'How hard is it working? Green is calm, amber is working hard, red is failing. Click the weakest link to find it in 3D.' },
+  { sel: '#lMonsoon', up: '.panel section', side: 'right', title: 'Throw the hills at it', text: 'Turn on a waterlogged monsoon roof, wind, an earthquake, a flash flood, or a landslide under one plinth.' },
+  { sel: '#bBreak', side: 'right', title: 'Break it', text: 'Ramp every force until something gives, then watch the failure unfold, step by step, until collapse.' },
+  { sel: '#bExport', title: 'Make it', text: 'Print a bamboo-stick scale-model kit with drawings, a site cut list and a bill of materials. Then build it for real.' },
+  { sel: '.seg', title: 'See it', text: 'Switch to Presence for light, mist and real bamboo. Walk in at eye height, or press Film to record a clean fly-around.' }
+];
+let tourI = -1;
+function tourTarget(st) { let el = $(st.sel); if (el && st.up) el = el.closest(st.up) || el; return el; }
+function showTour(i) {
+  $$('.tour-target').forEach(e => e.classList.remove('tour-target'));
+  tourI = i;
+  if (i < 0 || i >= TOUR.length) {
+    $('#tour').hidden = true; document.body.classList.remove('show-left', 'show-right');
+    try { localStorage.setItem('bamboofy.toured', '1'); } catch {}
+    return;
+  }
+  const st = TOUR[i];
+  const small = innerWidth <= 900;
+  document.body.classList.toggle('show-left', small && st.side === 'left');
+  document.body.classList.toggle('show-right', small && st.side === 'right');
+  const el = tourTarget(st);
+  el?.scrollIntoView?.({ block: 'nearest' });
+  el?.classList.add('tour-target');
+  $('#tourStep').textContent = `${i + 1} of ${TOUR.length}`;
+  $('#tourTitle').textContent = st.title;
+  $('#tourText').textContent = st.text;
+  $('#tourBack').disabled = i === 0;
+  $('#tourNext').textContent = i === TOUR.length - 1 ? 'Start designing' : 'Next';
+  const box = $('#tour'); box.hidden = false;
+  requestAnimationFrame(() => {
+    const r = el ? el.getBoundingClientRect() : { left: innerWidth / 2, right: innerWidth / 2, top: innerHeight / 2, bottom: innerHeight / 2, width: 0, height: 0 };
+    const w = box.offsetWidth, h = box.offsetHeight, pad = 12;
+    let x, y;
+    if (el?.id === 'viewport') { x = r.left + r.width / 2 - w / 2; y = r.top + r.height * 0.62; }
+    else if (r.left > innerWidth / 2) { x = r.left - w - pad; y = r.top; }
+    else if (r.right < innerWidth / 2) { x = r.right + pad; y = r.top; }
+    else { x = r.left + r.width / 2 - w / 2; y = r.bottom + pad; }
+    if (small) { x = (innerWidth - w) / 2; y = innerHeight - h - 70; }
+    box.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + 'px';
+    box.style.top = Math.max(60, Math.min(innerHeight - h - 8, y)) + 'px';
+  });
+}
+function startTour() { if (app.film) setFilm(false); $('#gallery').hidden = true; showTour(0); }
+function maybeTour() { let seen = false; try { seen = !!localStorage.getItem('bamboofy.toured'); } catch {} if (!seen) setTimeout(startTour, 500); }
 
 // ---------- boot ----------
 const viewer = new Viewer($('#viewport'));
@@ -666,7 +728,16 @@ function boot() {
   document.addEventListener('click', () => { $('#exportMenu').hidden = true; });
   for (const b of $$('#exportMenu button')) b.onclick = () => exportAction(b.dataset.x);
   $('#bKitGo').onclick = openKit;
-  for (const b of $$('[data-close]')) b.onclick = () => { b.closest('.modal').hidden = true; };
+  for (const b of $$('[data-close]')) b.onclick = () => { const m = b.closest('.modal'); m.hidden = true; if (m.id === 'gallery') maybeTour(); };
+  $('#bFilm').onclick = () => setFilm(true);
+  $('#fExit').onclick = () => setFilm(false);
+  $('#fOrbit').onclick = () => { $('#fOrbit').classList.toggle('on'); viewer.controls.autoRotate = $('#fOrbit').classList.contains('on'); };
+  $('#fBreak').onclick = runBreak;
+  $('#bTour').onclick = startTour;
+  $('#tourNext').onclick = () => showTour(tourI + 1);
+  $('#tourBack').onclick = () => showTour(tourI - 1);
+  $('#tourSkip').onclick = () => showTour(-1);
+  window.addEventListener('resize', () => { if (tourI >= 0 && !$('#tour').hidden) showTour(tourI); });
   $('#designName').onchange = e => { app.model.name = e.target.value; save(); };
   $('#bAddGen').onclick = () => {
     snapshot();
@@ -695,6 +766,9 @@ function boot() {
     const k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); exportAction('json'); return; }
+    if (!$('#tour').hidden) { if (k === 'escape') showTour(-1); if (k === 'arrowright' || k === 'enter') showTour(tourI + 1); if (k === 'arrowleft') showTour(tourI - 1); return; }
+    if (app.film) { if (k === 'escape' || k === 'h') setFilm(false); if (k === 'b') runBreak(); if (k === 'o') $('#fOrbit').click(); if (k === 'r') { clearBreak(); render(); } return; }
+    if (k === 'h') { setFilm(true); return; }
     if (viewer.walk) { if (k === 'escape') toggleWalk(false); return; }
     if (k === 'escape') { if (app.poleStart) { app.poleStart = null; viewer.setGhost(null); } else setTool('select'); }
     const toolKeys = { v: 'select', p: 'pole', f: 'support', l: 'load', g: 'settle', x: 'delete' };

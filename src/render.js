@@ -18,22 +18,6 @@ export function stressColor(u, out = new THREE.Color()) {
   return out;
 }
 
-function bambooTexture() {
-  const c = document.createElement('canvas'); c.width = 16; c.height = 256;
-  const g = c.getContext('2d');
-  const grd = g.createLinearGradient(0, 0, 16, 0);
-  grd.addColorStop(0, '#9c7a35'); grd.addColorStop(0.5, '#e2c27a'); grd.addColorStop(1, '#9c7a35');
-  g.fillStyle = grd; g.fillRect(0, 0, 16, 256);
-  for (let i = 0; i < 4; i++) {
-    const y = 20 + i * 64;
-    g.fillStyle = 'rgba(70,50,20,0.55)'; g.fillRect(0, y, 16, 3);
-    g.fillStyle = 'rgba(255,240,200,0.35)'; g.fillRect(0, y + 3, 16, 2);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
 function marchingContours(fn, size, res, step) {
   const pts = [];
   const h = size / res;
@@ -62,6 +46,58 @@ function marchingContours(fn, size, res, step) {
   return new Float32Array(pts);
 }
 
+function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+function disposeTree(root, keep) {
+  root.traverse(o => {
+    if (o.parent?.type === 'ArrowHelper' || o.type === 'ArrowHelper') return;
+    if (o.geometry && !keep.has(o.geometry)) o.geometry.dispose();
+    if (o.isInstancedMesh) o.dispose();
+  });
+}
+
+const SKY_TOP = new THREE.Color(0x6f9ccc), SKY_HORIZON = new THREE.Color(0xf2d8b0), HAZE = 0xd9d2bf;
+
+function makeSky() {
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: SKY_TOP }, horizon: { value: SKY_HORIZON }, sunDir: { value: new THREE.Vector3(-0.6, 0.35, 0.5).normalize() } },
+    vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunDir; varying vec3 vDir;
+      void main(){ float h = max(vDir.y, 0.0); vec3 c = mix(horizon, top, pow(h, 0.55));
+        float s = max(dot(normalize(vDir), sunDir), 0.0); c += vec3(1.0,0.82,0.55) * (pow(s, 600.0) * 2.0 + pow(s, 12.0) * 0.25);
+        if (vDir.y < 0.0) c = mix(horizon, vec3(0.62,0.6,0.52), min(1.0, -vDir.y * 4.0));
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`
+  });
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), mat);
+  sky.renderOrder = -10;
+  return sky;
+}
+
+function makeHills() {
+  const g = new THREE.Group();
+  const tones = [0x3f5a33, 0x58705c, 0x7d9294];
+  tones.forEach((tone, k) => {
+    const R = 150 + k * 80, n = 160, pos = [], idx = [];
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const h = 10 + k * 12 + 12 * Math.sin(a * 3 + k * 1.7) * Math.sin(a * 5 + k) + 5 * Math.sin(a * 9 + k * 3.1) + 2 * Math.sin(a * 17 + k);
+      const x = Math.cos(a) * R, z = Math.sin(a) * R;
+      pos.push(x, -40, z, x, h, z);
+      if (i < n) { const b = i * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: tone, side: THREE.DoubleSide, fog: true }));
+    g.add(mesh);
+  });
+  return g;
+}
+
 export class Viewer {
   constructor(container) {
     this.container = container;
@@ -71,7 +107,7 @@ export class Viewer {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 600);
+    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1200);
     this.camera.position.set(26, 18, 30);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 3, 0);
@@ -92,17 +128,62 @@ export class Viewer {
     this.sun.position.set(-30, 45, 20);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(this.sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 140 });
-    this.scene.add(this.hemi, this.sun);
+    this.sun.shadow.bias = -0.0015;
+    this.sun.shadow.normalBias = 0.06;
+    Object.assign(this.sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 160 });
+    this.scene.add(this.hemi, this.sun, this.sun.target);
 
-    this.bambooTex = bambooTexture();
-    this.memberMat = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0 });
-    this.unitCyl = new THREE.CylinderGeometry(1, 1, 1, 10, 1, false);
+    this.sky = makeSky(); this.scene.add(this.sky);
+    this.hills = makeHills(); this.scene.add(this.hills);
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const envScene = new THREE.Scene(); envScene.add(makeSky());
+    this.envMap = pmrem.fromScene(envScene, 0.02).texture;
+
+    // Real culms: taper in geometry; node rings, sheen streaks and per-culm variation in the shader.
+    this.culmUniforms = { uDraft: { value: 1 }, uRing: { value: 1 } };
+    this.memberMat = new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0, side: THREE.DoubleSide, shadowSide: THREE.BackSide });
+    this.memberMat.onBeforeCompile = sh => {
+      sh.uniforms.uDraft = this.culmUniforms.uDraft; sh.uniforms.uRing = this.culmUniforms.uRing;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float aLen; attribute float aSeed; varying float vAlong; varying float vSeed; varying float vAround;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlong = position.y * aLen; vSeed = aSeed; vAround = uv.x;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uDraft; uniform float uRing; varying float vAlong; varying float vSeed; varying float vAround;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          float sp = 0.30 + 0.12 * fract(vSeed * 7.13);
+          float ph = fract((vAlong + vSeed * 0.37) / sp);
+          float d = min(ph, 1.0 - ph) * sp;
+          float ring = exp(-pow(d / mix(0.011, 0.016, uDraft), 2.0));
+          float halo = exp(-pow((ph * sp - 0.03) / 0.02, 2.0));
+          float streak = 0.93 + 0.07 * sin(vAround * 6.2831 * 9.0 + vSeed * 31.0) * sin(vAlong * 1.3 + vSeed * 5.0);
+          diffuseColor.rgb *= mix(streak, 1.0, uDraft);
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * (1.0 - mix(0.5, 0.7, uDraft) * uRing), ring);
+          diffuseColor.rgb += (1.0 - uDraft) * 0.07 * halo * uRing;
+        }`);
+    };
+    this.unitCyl = new THREE.CylinderGeometry(0.93, 1, 1, 12, 1, true);
     this.unitCyl.translate(0, 0.5, 0);
     this.nodeMat = new THREE.MeshStandardMaterial({ roughness: 0.6 });
     this.unitSphere = new THREE.SphereGeometry(1, 12, 8);
     this.plinthMat = new THREE.MeshStandardMaterial({ color: 0x8d8a80, roughness: 0.95 });
     this.panelMat = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, vertexColors: true, transparent: true, roughness: 0.95, depthWrite: false });
+    this.thatchUniforms = { uPresence: { value: 0 } };
+    this.panelMat.onBeforeCompile = sh => {
+      sh.uniforms.uPresence = this.thatchUniforms.uPresence;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vW;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uPresence; varying vec3 vW;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          float rows = fract(vW.y * 7.0 + 0.35 * sin(vW.x * 1.9 + vW.z * 1.3));
+          float fiber = 0.86 + 0.14 * sin((vW.x * 0.7 + vW.z * 0.7) * 85.0 + rows * 9.0 + sin(vW.y * 30.0));
+          float course = 0.72 + 0.28 * smoothstep(0.0, 0.3, rows);
+          diffuseColor.rgb *= mix(1.0, course * fiber, uPresence);
+        }`);
+    };
     this.inkMat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.85 });
 
     this.group = new THREE.Group(); this.scene.add(this.group);
@@ -144,14 +225,20 @@ export class Viewer {
   setMode(mode) { this.mode = mode; this.applyMode(); if (this.model) this.update(this.model, this.state); }
   applyMode() {
     const p = this.mode === 'presence';
-    this.scene.background = new THREE.Color(p ? 0xcfd8d6 : PAPER);
-    this.scene.fog = p ? new THREE.FogExp2(0xcfd8d6, 0.012) : null;
-    this.hemi.intensity = p ? 1.1 : 2.2;
-    this.sun.intensity = p ? 2.2 : 0.9;
+    this.scene.background = p ? null : new THREE.Color(PAPER);
+    this.scene.fog = p ? new THREE.FogExp2(HAZE, 0.0055) : null;
+    this.scene.environment = p ? this.envMap : null;
+    this.sky.visible = this.hills.visible = p;
+    this.hemi.color.set(p ? 0xcfe0f0 : 0xfff5e0); this.hemi.groundColor.set(p ? 0x7a6448 : 0x6b6a50);
+    this.hemi.intensity = p ? 1.25 : 2.2;
+    this.sun.color.set(p ? 0xffd2a0 : 0xffe7c2);
+    this.sun.intensity = p ? 2.8 : 0.9;
     this.sun.castShadow = p;
     this.renderer.toneMapping = p ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-    this.memberMat.map = p && !this.overlay ? this.bambooTex : null;
-    this.memberMat.needsUpdate = true;
+    this.renderer.toneMappingExposure = p ? 1.05 : 1;
+    this.culmUniforms.uDraft.value = p ? 0 : 1;
+    this.culmUniforms.uRing.value = this.overlay ? 0.45 : 1;
+    this.thatchUniforms.uPresence.value = p ? 1 : 0;
     if (this.terrainModel) this.buildTerrain(this.terrainModel, true);
   }
 
@@ -159,8 +246,10 @@ export class Viewer {
     const key = JSON.stringify(t) + this.mode + (this.waterRise || 0) + !!this.raining;
     if (!force && key === this.terrainKey) return;
     this.terrainKey = key; this.terrainModel = t;
+    disposeTree(this.terrainGroup, new Set());
     this.terrainGroup.clear();
-    const size = 90, res = 140;
+    const presence = this.mode === 'presence';
+    const size = presence ? 260 : 90, res = presence ? 260 : 140;
     const geo = new THREE.PlaneGeometry(size, size, res, res);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position;
@@ -174,7 +263,9 @@ export class Viewer {
         const yN = terrainHeight(t, x, z + 0.5), yE = terrainHeight(t, x + 0.5, z);
         const steep = Math.min(1, Math.hypot(yN - y, yE - y) * 2.2);
         const n = 0.5 + 0.5 * Math.sin(x * 1.3 + z * 0.7) * Math.cos(z * 1.1);
-        c.setRGB(0.27 + 0.2 * steep + 0.05 * n, 0.36 + 0.06 * n - 0.08 * steep, 0.18 + 0.05 * steep);
+        const grass = [0.2 + 0.05 * n, 0.36 + 0.08 * n, 0.12 + 0.03 * n], soil = [0.42, 0.31, 0.19];
+        const k = Math.min(1, steep * 1.2);
+        c.setRGB(grass[0] + (soil[0] - grass[0]) * k, grass[1] + (soil[1] - grass[1]) * k, grass[2] + (soil[2] - grass[2]) * k);
       } else {
         c.setHex(0xe7dfcd);
       }
@@ -188,16 +279,16 @@ export class Viewer {
     mesh.name = 'terrain';
     this.terrainMesh = mesh;
     this.terrainGroup.add(mesh);
-    const lines = marchingContours((x, z) => terrainHeight(t, x, z), size, 110, 0.5);
+    const lines = marchingContours((x, z) => terrainHeight(t, x, z), presence ? 90 : size, 110, 0.5);
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lines, 3));
     const contour = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: this.mode === 'presence' ? 0x3d4a25 : 0x8a7d66, transparent: true, opacity: this.mode === 'presence' ? 0.12 : 0.55 }));
     this.terrainGroup.add(contour);
     if (t.jhiri) {
       const wl = normalWaterLevel(t) + (this.waterRise || 0);
-      const water = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ color: this.waterRise ? 0x7a6a48 : 0x5f8a8f, transparent: true, opacity: this.mode === 'presence' ? 0.78 : 0.35, roughness: 0.15, metalness: 0.1 }));
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ color: this.waterRise ? 0x7a6a48 : (presence ? 0x3f6b70 : 0x5f8a8f), transparent: true, opacity: presence ? 0.88 : 0.35, roughness: presence ? 0.06 : 0.15, metalness: presence ? 0.35 : 0.1 }));
       water.rotation.x = -Math.PI / 2; water.position.y = wl;
       // clip water to the channel using a mask: cheap trick, a thin band around the jhiri
-      water.geometry = new THREE.PlaneGeometry(size, (t.jhiriWidth || 3) * 1.6 + (this.waterRise || 0) * 6);
+      water.geometry = new THREE.PlaneGeometry(size, (t.jhiriWidth || 3) * 2.2 + (this.waterRise || 0) * 6);
       water.position.z = t.jhiriZ || 0;
       this.terrainGroup.add(water);
     }
@@ -222,6 +313,7 @@ export class Viewer {
     this.model = model; this.state = state;
     const lib = state.lib || SPECIES;
     this.buildTerrain(model.terrain);
+    disposeTree(this.group, new Set([this.unitCyl, this.unitSphere]));
     this.group.clear();
     const nm = new Map(model.nodes.map(n => [n.id, n]));
     const disp = state.disp && this.deformScale ? state.disp : null;
@@ -239,7 +331,9 @@ export class Viewer {
     const members = model.members.filter(m => !this.hidden.has(m.id));
     let count = 0;
     for (const m of members) count += Math.max(1, m.bundle || 1);
-    const inst = new THREE.InstancedMesh(this.unitCyl, this.memberMat, Math.max(1, count));
+    const cyl = this.unitCyl.clone();
+    const aLen = new Float32Array(Math.max(1, count)), aSeed = new Float32Array(Math.max(1, count));
+    const inst = new THREE.InstancedMesh(cyl, this.memberMat, Math.max(1, count));
     inst.castShadow = presence; inst.receiveShadow = presence;
     const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
     const col = new THREE.Color();
@@ -263,11 +357,19 @@ export class Viewer {
           const ang = (i / ringN) * Math.PI * 2;
           off.addScaledVector(side, Math.cos(ang) * ringR).addScaledVector(side2, Math.sin(ang) * ringR);
         }
-        mtx.compose(a.clone().add(off), q, new THREE.Vector3(r, L, r));
+        const seed = hash(m.id * 13.7 + i * 3.1);
+        const rr = r * (0.93 + 0.14 * hash(seed * 91.3));
+        // a little natural crookedness: tilt each culm by up to ~0.6°
+        const wob = new THREE.Quaternion().setFromAxisAngle(side, (hash(seed * 17.1) - 0.5) * 0.02);
+        mtx.compose(a.clone().add(off), wob.multiply(q.clone()), new THREE.Vector3(rr, L, rr));
         inst.setMatrixAt(k, mtx);
+        aLen[k] = L; aSeed[k] = (seed + m.id * 0.618) % 1;
         if (this.overlay && memberU) stressColor(memberU.get(m.id), col);
-        else if (presence) col.setHex(species.kind === 'timber' ? 0x7a5230 : 0xffffff).offsetHSL(0, 0, ((m.id * 37) % 10 - 5) / 100);
-        else col.setHex(species.kind === 'timber' ? 0x8b6b4a : 0xd9c9a8);
+        else if (presence) {
+          if (species.kind === 'timber') col.setHSL(0.07, 0.42, 0.28 + 0.06 * hash(seed * 5.1));
+          else col.setHSL(0.095 + 0.025 * hash(seed * 3.3) + (hash(seed * 7.7) > 0.85 ? 0.04 : 0), 0.55 + 0.15 * hash(seed * 2.2), 0.56 + 0.1 * hash(seed * 4.4));
+        }
+        else col.setHex(species.kind === 'timber' ? 0x8b6b4a : 0xe2d4b4);
         if (this.highlight?.kind === 'member' && this.highlight.id === m.id) col.setHex(0x1e5bd8);
         if (state.failed?.has(m.id)) col.setHex(0xc0392b);
         inst.setColorAt(k, col);
@@ -277,6 +379,8 @@ export class Viewer {
       ink.push(a.x, a.y, a.z, b.x, b.y, b.z);
     }
     inst.count = k;
+    cyl.setAttribute('aLen', new THREE.InstancedBufferAttribute(aLen, 1));
+    cyl.setAttribute('aSeed', new THREE.InstancedBufferAttribute(aSeed, 1));
     inst.instanceMatrix.needsUpdate = true;
     if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
     inst.name = 'members';
@@ -365,6 +469,7 @@ export class Viewer {
       const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), p.clone().add(new THREE.Vector3(0, len, 0)), len, 0xb5532f, 0.35, 0.22);
       this.group.add(arrow);
     }
+    this.fitSun();
     // landslide marker
     if (state.settleNode && nm.has(state.settleNode)) {
       const p = P(state.settleNode);
@@ -372,6 +477,15 @@ export class Viewer {
       ring.rotation.x = Math.PI / 2; ring.position.copy(p).add(new THREE.Vector3(0, -0.4, 0));
       this.group.add(ring);
     }
+  }
+
+  fitSun() {
+    const b = this.bounds();
+    const c = b.getCenter(new THREE.Vector3()), r = Math.max(12, b.getSize(new THREE.Vector3()).length() * 0.65);
+    this.sun.target.position.copy(c);
+    this.sun.position.copy(c).add(new THREE.Vector3(-0.62, 0.42, 0.52).multiplyScalar(80));
+    Object.assign(this.sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: 200 });
+    this.sun.shadow.camera.updateProjectionMatrix();
   }
 
   bounds() {

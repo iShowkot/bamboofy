@@ -26,6 +26,8 @@
   <button class="chip" id="tDeform" title="Exaggerated deformed shape (D)">Sag</button>
   <button class="chip on" id="tSkins" title="Show roof & deck skins (K)">Skins</button>
   <button class="btn" id="bWalk" title="Walk inside at eye height (W)">Walk in</button>
+  <button class="btn" id="bFilm" title="Film mode: hide the interface and orbit slowly, for recording (H)">Film</button>
+  <button class="icon" id="bTour" title="Guided tour" aria-label="Guided tour">?</button>
   <span class="sep"></span>
   <button class="icon" id="bUndo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
   <button class="icon" id="bRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
@@ -100,6 +102,12 @@
     <button data-w="f">▲</button><button data-w="l">◀</button><button data-w="b">▼</button><button data-w="r">▶</button>
     <button class="exit" id="bWalkExit">Exit walk</button>
   </div>
+  <div class="filmbar" id="filmbar">
+    <span class="filmname" id="filmName"></span>
+    <button id="fOrbit" class="on" title="Slow orbit (O)">Orbit</button>
+    <button id="fBreak" title="Break it in slow motion (B)">Break it</button>
+    <button id="fExit" title="Exit film mode (H or Esc)">Exit film</button>
+  </div>
   <div class="legend" id="legend"><span class="g"></span>calm<span class="a"></span>working hard<span class="r"></span>failing</div>
 </main>
 
@@ -169,6 +177,12 @@
 </div>
 <input type="file" id="fileIn" accept=".json,.bamboo.json,application/json" hidden>
 <div class="toast" id="toast" hidden></div>
+<div class="tour" id="tour" hidden role="dialog" aria-live="polite">
+  <div class="tour-step" id="tourStep"></div>
+  <h4 id="tourTitle"></h4>
+  <p id="tourText"></p>
+  <div class="row"><button class="btn" id="tourSkip">Skip tour</button><span style="flex:1"></span><button class="btn" id="tourBack">Back</button><button class="btn primary" id="tourNext">Next</button></div>
+</div>
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }</script>
 <script type="module" src="src/main.js"></script>
 </body>

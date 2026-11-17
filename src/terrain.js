@@ -9,11 +9,13 @@ export function terrainHeight(t, x, z) {
   const valley = tanS * side * Math.sqrt(dz * dz + 4) - tanS * 2 * side;
   const w = (t.jhiriWidth || 3) / 2;
   const channel = (t.jhiriDepth || 2) * Math.exp(-(dz * dz) / (w * w));
-  return valley - channel + ripple;
+  // the stream bed is smooth: damp the ripple near the channel so water reads as one surface
+  const calm = 1 - 0.9 * Math.exp(-(dz * dz) / (w * w * 3));
+  return valley - channel + ripple * calm;
 }
 
 export function streamBed(t) {
   return terrainHeight(t, 0, t.jhiriZ || 0);
 }
 
-export function normalWaterLevel(t) { return streamBed(t) + 0.35; }
+export function normalWaterLevel(t) { return streamBed(t) + (t.jhiriDepth || 2) * 0.55; }

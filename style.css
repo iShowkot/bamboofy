@@ -198,10 +198,31 @@ input[type=range] { width: 100%; accent-color: var(--bamboo); margin: 2px 0; }
 }
 
 @media (max-width: 600px) {
-  .brand .word, .brand .bn, #bRedo { display: none; }
+  .brand .word, .brand .bn, #bRedo, #bFilm, #bTour { display: none; }
   .top { padding: 0 6px; }
   .seg button { padding: 5px 8px; }
   .spacer { display: none; }
   .menu { margin-left: auto; }
   .status span:nth-child(n+4) { display: none; }
 }
+
+/* film mode */
+.filmbar { display: none; }
+body.film .top, body.film .panel, body.film .tools, body.film .legend, body.film .status { display: none !important; }
+body.film #stage { top: 0; bottom: 0; left: 0; right: 0; }
+body.film .filmbar { display: flex; position: absolute; right: 16px; bottom: 16px; gap: 6px; align-items: center; opacity: .18; transition: opacity .3s; }
+body.film .filmbar:hover, body.film .filmbar:focus-within { opacity: 1; }
+.filmbar button { border: 1px solid #fff6; background: #2b2520b0; color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 12px; }
+.filmbar button.on { background: #fff; color: var(--ink); }
+.filmname { color: #fff; font: italic 15px var(--serif); text-shadow: 0 1px 6px #0008; margin-right: 8px; }
+body.film .hud { top: auto; bottom: 64px; font-size: 14px; padding: 8px 16px; }
+body.film .walkpad { display: none !important; }
+
+/* guided tour */
+.tour { position: fixed; z-index: 70; width: 300px; background: #fffdf8; border: 1px solid var(--ink-2); border-radius: 14px; padding: 14px 16px 12px; box-shadow: 0 18px 50px #2b252040; }
+.tour h4 { margin: 2px 0 4px; font: 600 18px var(--serif); }
+.tour p { margin: 0 0 12px; color: var(--ink-2); }
+.tour-step { font-size: 11px; color: var(--ink-3); letter-spacing: .06em; text-transform: uppercase; }
+.tour .btn { padding: 5px 10px; }
+.tour-target { outline: 3px solid var(--terra) !important; outline-offset: 3px; border-radius: 8px; position: relative; z-index: 65; }
+#viewport.tour-target { outline-offset: -6px; }
