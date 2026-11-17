@@ -1,4 +1,4 @@
-// Banshala renderer: drafting-table mode, presence mode, stress overlay, walk-inside view.
+// Bamboofy renderer: drafting-table mode, presence mode, stress overlay, walk-inside view.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { terrainHeight, normalWaterLevel } from './terrain.js';

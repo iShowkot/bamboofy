@@ -1,5 +1,5 @@
-// Offline cache: once loaded, Banshala works on the hillside without signal.
-const V = 'banshala-v1';
+// Offline cache: once loaded, Bamboofy works on the hillside without signal.
+const V = 'bamboofy-v1';
 const FILES = ['./', 'index.html', 'style.css', 'icon.svg', 'manifest.webmanifest',
   'vendor/three.module.js', 'vendor/addons/controls/OrbitControls.js',
   'src/main.js', 'src/render.js', 'src/model.js', 'src/generators.js', 'src/materials.js',

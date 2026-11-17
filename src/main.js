@@ -1,4 +1,4 @@
-// Banshala — app shell: state, tools, panels, analysis loop.
+// Bamboofy — app shell: state, tools, panels, analysis loop.
 import { Viewer, stressColor } from './render.js';
 import { emptyModel, addNode, addMember, removeMember, removeNode, clone, validate, FORMAT } from './model.js';
 import { GENERATORS, PRESETS, defaultsFor, runGenerators } from './generators.js';
@@ -10,7 +10,7 @@ import { terrainHeight } from './terrain.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const STORE = 'banshala.design.v1', STORE_SC = 'banshala.scenario.v1';
+const STORE = 'bamboofy.design.v1', STORE_SC = 'bamboofy.scenario.v1';
 
 const app = {
   model: null,
@@ -587,7 +587,7 @@ function afterLoad(frame = false) {
 // ---------- io ----------
 function exportAction(x) {
   const m = app.model, L = lib();
-  const base = (m.name || 'banshala').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'banshala';
+  const base = (m.name || 'bamboofy').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'bamboofy';
   if (x === 'json') download(`${base}.bamboo.json`, JSON.stringify(m, null, 1), 'application/json');
   if (x === 'cut') download(`${base}-cut-list.csv`, toCSV(cutList(m, L)), 'text/csv');
   if (x === 'bom') download(`${base}-materials.csv`, toCSV(bomCSV(billOfMaterials(m, L))), 'text/csv');
@@ -599,7 +599,7 @@ function openKit() {
   const html = kitHTML(app.model, lib(), scale);
   const w = window.open('', '_blank');
   if (w) { w.document.open(); w.document.write(html); w.document.close(); }
-  else download(`${(app.model.name || 'banshala').replace(/\s+/g, '-')}-kit-1-${scale}.html`, html, 'text/html');
+  else download(`${(app.model.name || 'bamboofy').replace(/\s+/g, '-')}-kit-1-${scale}.html`, html, 'text/html');
   $('#kitModal').hidden = true;
 }
 
@@ -610,7 +610,7 @@ function toast(msg) {
 
 // ---------- boot ----------
 const viewer = new Viewer($('#viewport'));
-window.banshala = { app, viewer };
+window.bamboofy = { app, viewer };
 
 function boot() {
   // selects

@@ -167,7 +167,7 @@ export function kitHTML(model, lib, scale) {
 <style>body{font-family:system-ui,sans-serif;color:#2b2520;max-width:960px;margin:24px auto;padding:0 16px}h1,h2{font-family:Georgia,serif;font-weight:500}
 table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid #ddd3bf;padding:4px 6px;text-align:left}th{background:#efe8da}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.muted{color:#7a6e5d}@media print{.noprint{display:none}}</style></head><body>
-<p class="muted">Banshala · বাঁশালা — scale-model kit</p>
+<p class="muted">Bamboofy — open-source bamboo design lab · scale-model kit</p>
 <h1>${esc(model.name)} <span class="muted">at 1:${scale}</span></h1>
 <button class="noprint" onclick="print()">Print</button>
 <h2>Drawings</h2>

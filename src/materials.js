@@ -1,4 +1,4 @@
-// Banshala material library.
+// Bamboofy material library.
 // Values are indicative characteristic properties drawn from published bamboo/timber
 // literature ranges. Every value is editable in the app — replace with your own field tests.
 // Units: D, t in mm; E in GPa; strengths in MPa; density in kg/m3.

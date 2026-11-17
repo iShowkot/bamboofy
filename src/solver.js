@@ -1,4 +1,4 @@
-// Banshala 3D frame solver.
+// Bamboofy 3D frame solver.
 // Linear-elastic space frame (6 DOF per node, Euler–Bernoulli members), banded Cholesky
 // with reverse Cuthill–McKee ordering so a few thousand poles solve in milliseconds.
 // Intuition-grade by design: joints are stiff, member loads are lumped to nodes.

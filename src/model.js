@@ -1,8 +1,8 @@
-// Banshala design model — plain JSON so it can be saved as .bamboo.json and
+// Bamboofy design model — plain JSON so it can be saved as .bamboo.json and
 // opened unchanged by any future version (site mode, sketch mode, etc.).
 // Coordinates: metres, y is up.
 
-export const FORMAT = 'banshala/1';
+export const FORMAT = 'bamboofy/1';
 
 export function emptyModel(name = 'Untitled structure') {
   return {
@@ -95,7 +95,7 @@ export function memberLength(model, m, nm = nodeMap(model)) {
 export function clone(model) { return JSON.parse(JSON.stringify(model)); }
 
 export function validate(obj) {
-  if (!obj || typeof obj !== 'object') throw new Error('Not a Banshala design file');
+  if (!obj || typeof obj !== 'object') throw new Error('Not a Bamboofy design file');
   if (!Array.isArray(obj.nodes) || !Array.isArray(obj.members)) throw new Error('Design file is missing nodes or members');
   const base = emptyModel();
   return { ...base, ...obj, terrain: { ...base.terrain, ...(obj.terrain || {}) }, site: { ...base.site, ...(obj.site || {}) } };
