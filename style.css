@@ -289,3 +289,7 @@ body:has(.polebar:not([hidden])) .legend { display: none; }
 body.collapse-right .viewcube { right: 44px; }
 body.film .viewcube { display: none; }
 @media (max-width: 900px) { .viewcube { top: 52px; transform: scale(.8); transform-origin: top right; } }
+
+.axis-triad { position: absolute; left: 14px; bottom: 14px; width: 80px; height: 80px; z-index: 5; pointer-events: auto; }
+body.film .axis-triad { display: none; }
+@media (max-width: 900px) { .axis-triad { bottom: 150px; width: 64px; height: 64px; } }

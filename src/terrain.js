@@ -1,7 +1,8 @@
 // Hill terrain: a valley with a jhiri (stream) running along x.
 export function terrainHeight(t, x, z) {
   const tanS = Math.tan((t.slope || 0) * Math.PI / 180);
-  const ripple = 0.25 * Math.sin(x * 0.17) * Math.cos(z * 0.11) + 0.15 * Math.sin(x * 0.05 + z * 0.07);
+  // gentle natural unevenness, none on flat ground
+  const ripple = Math.min(1, (t.slope || 0) / 6 + (t.jhiri ? 0.5 : 0)) * (0.25 * Math.sin(x * 0.17) * Math.cos(z * 0.11) + 0.15 * Math.sin(x * 0.05 + z * 0.07));
   if (!t.jhiri) return -tanS * z + ripple;
   const dz = z - (t.jhiriZ || 0);
   // steeper near bank (z<0, uphill side), gentler far bank

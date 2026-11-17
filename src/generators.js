@@ -388,7 +388,10 @@ export const PRESETS = {
   },
   blank: {
     name: 'Blank hillside',
-    sub: 'Start from a single pole',
-    build(model) { model.name = 'Untitled structure'; }
+    sub: 'Flat ground. Start from a single pole',
+    build(model) {
+      model.name = 'Untitled structure';
+      Object.assign(model.terrain, { slope: 0, jhiri: false });
+    }
   }
 };

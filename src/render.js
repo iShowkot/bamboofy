@@ -279,6 +279,21 @@ export class Viewer {
     mesh.name = 'terrain';
     this.terrainMesh = mesh;
     this.terrainGroup.add(mesh);
+    // 1 m grid draped on the ground (bolder every 5 m) so the floor reads as a floor
+    {
+      const half = 20, step = 0.5, minor = [], major = [];
+      for (let i = -half; i <= half; i++) {
+        const arr = i % 5 === 0 ? major : minor;
+        for (let t = -half; t < half; t += step) {
+          arr.push(i, terrainHeight(this.terrainModel, i, t) + 0.02, t, i, terrainHeight(this.terrainModel, i, t + step) + 0.02, t + step);
+          arr.push(t, terrainHeight(this.terrainModel, t, i) + 0.02, i, t + step, terrainHeight(this.terrainModel, t + step, i) + 0.02, i);
+        }
+      }
+      for (const [arr, op] of [[minor, presence ? 0.08 : 0.22], [major, presence ? 0.16 : 0.42]]) {
+        const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+        this.terrainGroup.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: presence ? 0x2d3a1e : 0x7a6c55, transparent: true, opacity: op })));
+      }
+    }
     const lines = marchingContours((x, z) => terrainHeight(t, x, z), presence ? 90 : size, 110, 0.5);
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lines, 3));
     const contour = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: this.mode === 'presence' ? 0x3d4a25 : 0x8a7d66, transparent: true, opacity: this.mode === 'presence' ? 0.12 : 0.55 }));

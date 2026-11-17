@@ -6,11 +6,25 @@ import * as THREE from 'three';
 import { terrainHeight } from './terrain.js';
 
 const PLINTH = 0.45;
+// Named the Blender / SketchUp way: X red, Y green (both level), Z blue (up).
 export const AXES = {
-  x: { d: new THREE.Vector3(1, 0, 0), color: 0xd2412f, name: 'red axis' },
-  y: { d: new THREE.Vector3(0, 0, 1), color: 0x3f9b46, name: 'green axis' },
-  z: { d: new THREE.Vector3(0, 1, 0), color: 0x2f6fd8, name: 'vertical' }
+  x: { d: new THREE.Vector3(1, 0, 0), color: 0xd2412f, name: 'X', letter: 'X' },
+  y: { d: new THREE.Vector3(0, 0, 1), color: 0x3f9b46, name: 'Y', letter: 'Y' },
+  z: { d: new THREE.Vector3(0, 1, 0), color: 0x2f6fd8, name: 'Z', letter: 'Z' }
 };
+
+function letterSprite(text, color) {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#' + new THREE.Color(color).getHexString();
+  g.beginPath(); g.arc(32, 32, 28, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#fff'; g.font = 'bold 34px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 32, 34);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  spr.renderOrder = 13;
+  return spr;
+}
 const COL = { par: 0xc23bb3, perp: 0xc23bb3, slope: 0x8a5a2b, free: 0x2b2520, joint: 0x1e5bd8, mid: 0x1e9bb3, ground: 0x6b7d3a };
 
 function closestOnLineToRay(P0, d, ray) {
@@ -237,11 +251,10 @@ export class PoleDrawer {
       const grid = new THREE.GridHelper(10, 10, 0x8a7d6a, 0xb8ac93);
       grid.position.copy(P0); grid.material.transparent = true; grid.material.opacity = 0.35; grid.material.depthTest = false;
       g.add(grid);
-      const ax = new THREE.AxesHelper(1.2); ax.position.copy(P0); ax.material.depthTest = false; ax.renderOrder = 12;
-      // AxesHelper colours x red, y green, z blue in three's frame; recolour to our convention (y up = blue, z = green)
-      ax.setColors(new THREE.Color(AXES.x.color), new THREE.Color(AXES.z.color), new THREE.Color(AXES.y.color));
-      g.add(ax);
+      this.axisArrows(P0, c);
     }
+    if (!this.start && c.kind === 'ground') this.ghostPlinth(c.p);
+    if (this.start?.ground) this.ghostPlinth(this.start.p);
     // label
     const rect = this.v.renderer.domElement.getBoundingClientRect();
     const s = this.screen(c.p, rect);
@@ -249,8 +262,11 @@ export class PoleDrawer {
     let text;
     if (c.kind === 'joint') text = `Joint @${c.node}`;
     else if (c.kind === 'mid') text = `Midpoint of pole #${c.member}`;
-    else if (c.kind === 'ground') text = this.start ? (c.axis?.key === 'z' ? 'Straight down to the ground · plinth' : 'Ground · stone plinth') : 'Start here on the ground · stone plinth';
-    else if (c.kind === 'axis') text = c.axis.key === 'z' ? (c.vec.y >= 0 ? 'Straight up' : 'Straight down') : `On ${c.axis.name}`;
+    else if (c.kind === 'ground') text = this.start ? (c.axis?.key === 'z' ? 'Down Z to the ground · plinth' : 'On the ground · stone plinth') : 'Click to plant a pole here (stone plinth)';
+    else if (c.kind === 'axis') {
+      const k = c.axis.key, pos = c.vec.dot(c.axis.d) >= 0;
+      text = k === 'z' ? (pos ? 'Up Z ↑' : 'Down Z ↓') : AXES[k] ? `Along ${pos ? '+' : '−'}${AXES[k].letter}` : `${c.axis.name[0].toUpperCase()}${c.axis.name.slice(1)}`;
+    }
     else if (c.kind === 'typed') text = 'Typed';
     else text = 'Free · slide onto a coloured line to snap';
     const bits = [text];
@@ -266,6 +282,32 @@ export class PoleDrawer {
     this.label.style.left = Math.max(8, Math.min(rect.width - lw - 8, s.x + 16)) + 'px';
     this.label.style.top = Math.max(8, s.y - 34) + 'px';
     this.host.onLength?.(this.start ? c.len : null);
+  }
+
+  // labelled X / Y / Z arrows at the start point, scaled to stay readable at any zoom
+  axisArrows(P0, c) {
+    const dist = this.v.camera.position.distanceTo(P0);
+    const L = Math.max(1, dist * 0.09);
+    for (const [k, a] of Object.entries(AXES)) {
+      const on = c.axis?.key === k;
+      const arrow = new THREE.ArrowHelper(a.d, P0, L, a.color, L * 0.22, L * 0.12);
+      arrow.traverse(o => { if (o.material) { o.material.depthTest = false; o.material.transparent = true; o.material.opacity = on ? 1 : 0.75; } o.renderOrder = 12; });
+      this.group.add(arrow);
+      const spr = letterSprite(a.letter + (k === 'z' ? '↑' : ''), a.color);
+      spr.position.copy(P0).addScaledVector(a.d, L * 1.18);
+      const sz = L * (on ? 0.32 : 0.24); spr.scale.set(sz, sz, 1);
+      this.group.add(spr);
+    }
+  }
+
+  ghostPlinth(p) {
+    const gy = this.ground(p.x, p.z);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 0.5, 7), new THREE.MeshBasicMaterial({ color: 0x6b7d3a, transparent: true, opacity: 0.45 }));
+    m.position.set(p.x, gy + 0.2, p.z);
+    this.group.add(m);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.62, 32), new THREE.MeshBasicMaterial({ color: 0x6b7d3a, side: THREE.DoubleSide, transparent: true, opacity: 0.6, depthTest: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(p.x, gy + 0.03, p.z);
+    this.group.add(ring);
   }
 
   click(ev) {

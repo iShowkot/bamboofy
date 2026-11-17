@@ -461,7 +461,7 @@ function setTool(t) {
   if (t !== 'select') attachGizmo(null);
   else if (app.sel?.kind === 'node') attachGizmo(app.sel.id);
   const hints = {
-    select: '', pole: 'Click to start. Move up to raise the pole, down to the ground · blue line = vertical (↑ locks it) · type a length + Enter · Esc to finish.',
+    select: '', pole: 'Click the ground to plant a pole · move up to raise it (Z, blue) · X red and Y green are level · type a length + Enter · Esc to finish.',
     support: 'Click a joint to add or remove a stone plinth.', load: 'Click a joint to hang 5 kN on it (edit in the inspector).',
     settle: 'Click the plinth the hillside slips away from.', delete: 'Click a pole or joint to delete it.'
   };

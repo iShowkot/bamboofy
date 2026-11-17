@@ -19,6 +19,11 @@ export class ViewCube {
     wrap.innerHTML = `<div class="vc-cube">${FACES.map(f => `<button class="vc-face vc-${f.cls}" data-n="${f.n.join(',')}" title="Look from the ${f.label.toLowerCase()}${f.cls === 'front' ? ' (downhill side)' : f.cls === 'back' ? ' (uphill side)' : ''}">${f.label}</button>`).join('')}</div>
       <button class="vc-home" title="Fit the whole design">Fit</button>`;
     parent.appendChild(wrap);
+    // Blender-style axis compass in the corner
+    this.triad = document.createElement('canvas');
+    this.triad.className = 'axis-triad'; this.triad.width = this.triad.height = 160;
+    this.triad.title = 'X (red) and Y (green) are level, Z (blue) points up';
+    parent.appendChild(this.triad);
     this.cube = wrap.querySelector('.vc-cube');
     for (const b of wrap.querySelectorAll('.vc-face')) b.onclick = () => this.lookFrom(new THREE.Vector3(...b.dataset.n.split(',').map(Number)));
     wrap.querySelector('.vc-home').onclick = () => this.fit();
@@ -35,7 +40,29 @@ export class ViewCube {
       else m[j * 4 + i] = i === j ? 1 : 0;
     }
     this.cube.style.transform = `translateZ(-70px) matrix3d(${m.map(x => x.toFixed(5)).join(',')})`;
+    this.drawTriad();
     this.step();
+  }
+
+  drawTriad() {
+    const g = this.triad.getContext('2d'), S = 160, c = S / 2, R = 52;
+    g.clearRect(0, 0, S, S);
+    const q = this.v.camera.quaternion.clone().invert();
+    const axes = [
+      { v: new THREE.Vector3(1, 0, 0), col: '#d2412f', t: 'X' },
+      { v: new THREE.Vector3(0, 0, 1), col: '#3f9b46', t: 'Y' },
+      { v: new THREE.Vector3(0, 1, 0), col: '#2f6fd8', t: 'Z' }
+    ].map(a => ({ ...a, p: a.v.clone().applyQuaternion(q) }));
+    axes.sort((a, b) => a.p.z - b.p.z);
+    g.fillStyle = '#fffdf8cc'; g.beginPath(); g.arc(c, c, R + 22, 0, Math.PI * 2); g.fill();
+    for (const a of axes) {
+      const x = c + a.p.x * R, y = c - a.p.y * R;
+      g.strokeStyle = a.col; g.lineWidth = 5; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(c, c); g.lineTo(x, y); g.stroke();
+      g.fillStyle = a.col; g.beginPath(); g.arc(x, y, 15, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 18px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(a.t, x, y + 1);
+    }
   }
 
   animateTo(target, position) {
