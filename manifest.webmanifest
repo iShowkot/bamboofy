@@ -1,0 +1,9 @@
+{
+  "name": "Banshala — bamboo structure lab",
+  "short_name": "Banshala",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#efe8da",
+  "theme_color": "#efe8da",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

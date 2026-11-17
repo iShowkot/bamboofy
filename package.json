@@ -1,0 +1,16 @@
+{
+  "name": "banshala",
+  "version": "1.0.0",
+  "description": "Banshala — realtime bamboo & local-material structural lab",
+  "scripts": {
+    "test": "node tests/solver.test.mjs",
+    "start": "python3 -m http.server 8000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "type": "module"
+}

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Banshala · বাঁশালা — bamboo structure lab</title>
+<meta name="description" content="Banshala is a realtime lab for designing and stress-testing bamboo and local-material architecture — from idea to scale model to site.">
+<meta name="theme-color" content="#efe8da">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand" title="Banshala — bansh (bamboo) + chala (the Bengal roof) / shala (workshop)">
+    <svg viewBox="0 0 40 40" class="mark" aria-hidden="true"><path d="M4 30 C 12 6, 28 6, 36 30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M9 30 C 15 13, 25 13, 31 30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".6"/><path d="M2 32 H38" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <span class="word">Banshala</span><span class="bn">বাঁশালা</span>
+  </div>
+  <input id="designName" class="name" aria-label="Design name" spellcheck="false">
+  <div class="spacer"></div>
+  <div class="seg" role="group" aria-label="View mode">
+    <button data-mode="drafting" class="on" title="Drafting table (1)">Drafting</button>
+    <button data-mode="presence" title="Presence — light, mist, material (2)">Presence</button>
+  </div>
+  <button class="chip on" id="tStress" title="Stress overlay (S)">Stress</button>
+  <button class="chip" id="tDeform" title="Exaggerated deformed shape (D)">Sag</button>
+  <button class="chip on" id="tSkins" title="Show roof & deck skins (K)">Skins</button>
+  <button class="btn" id="bWalk" title="Walk inside at eye height (W)">Walk in</button>
+  <span class="sep"></span>
+  <button class="icon" id="bUndo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+  <button class="icon" id="bRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+  <button class="btn" id="bNew">New</button>
+  <button class="btn" id="bOpen">Open</button>
+  <button class="btn" id="bSave">Save</button>
+  <div class="menu">
+    <button class="btn primary" id="bExport">Make it ▾</button>
+    <div class="menu-list" id="exportMenu" hidden>
+      <button data-x="kit">Skewer model kit + drawings (print)</button>
+      <button data-x="cut">Site cut list (CSV)</button>
+      <button data-x="bom">Bill of materials (CSV)</button>
+      <button data-x="png">Snapshot image (PNG)</button>
+      <button data-x="json">Design file (.bamboo.json)</button>
+    </div>
+  </div>
+  <button class="icon mobile-only" id="bLeft" aria-label="Build panel">☰</button>
+  <button class="icon mobile-only" id="bRight" aria-label="Test panel">⚖</button>
+</header>
+
+<aside id="left" class="panel">
+  <nav class="tabs" role="tablist">
+    <button class="on" data-tab="build">Build</button>
+    <button data-tab="site">Site</button>
+    <button data-tab="library">Materials</button>
+  </nav>
+  <section data-pane="build">
+    <h3>Generators</h3>
+    <p class="hint">Parametric forms. Drag a slider — the physics follows live.</p>
+    <div class="row">
+      <select id="genType"></select>
+      <button class="btn" id="bAddGen">Add</button>
+    </div>
+    <div id="genList"></div>
+    <h3>Pole by pole</h3>
+    <div class="field"><label>Species</label><select id="newSpecies"></select></div>
+    <div class="field"><label>Culms per pole</label><input type="number" id="newBundle" min="1" max="9" value="1"></div>
+    <div class="field"><label>Joint</label><select id="newJoint"></select></div>
+    <div class="field"><label>Work plane height <output id="whOut">3.0 m</output></label><input type="range" id="workH" min="0" max="20" step="0.25" value="3"></div>
+    <label class="check"><input type="checkbox" id="snapGround"> Place on the ground instead of the work plane</label>
+  </section>
+  <section data-pane="site" hidden>
+    <h3>Hillside</h3>
+    <div class="field"><label>Slope <output id="slopeOut"></output></label><input type="range" id="tSlope" min="0" max="35" step="1"></div>
+    <label class="check"><input type="checkbox" id="tJhiri"> Jhiri (hill stream) through the site</label>
+    <div class="field"><label>Stream width <output id="jwOut"></output></label><input type="range" id="tJw" min="1" max="10" step="0.5"></div>
+    <div class="field"><label>Stream depth <output id="jdOut"></output></label><input type="range" id="tJd" min="0.5" max="5" step="0.1"></div>
+    <p class="hint">Generators re-seat their stone plinths on the new ground automatically. Every structure stores its site position, ready for the multi-building site mode later.</p>
+    <h3>Placement</h3>
+    <div class="field"><label>Site name</label><input id="siteName"></div>
+  </section>
+  <section data-pane="library" hidden>
+    <h3>Material library</h3>
+    <p class="hint">Indicative values from published ranges. Replace them with your own field tests — they're saved with the design.</p>
+    <div id="libTable"></div>
+    <button class="btn" id="bResetLib">Reset to defaults</button>
+  </section>
+</aside>
+
+<main id="stage">
+  <div id="viewport"></div>
+  <div class="tools" role="toolbar" aria-label="Tools">
+    <button data-tool="select" class="on" title="Select & orbit (V)"><span>⌖</span>Select</button>
+    <button data-tool="pole" title="Add pole — click two points (P)"><span>╱</span>Pole</button>
+    <button data-tool="support" title="Toggle stone plinth on a node (F)"><span>▲</span>Plinth</button>
+    <button data-tool="load" title="Hang a load on a node (L)"><span>↓</span>Load</button>
+    <button data-tool="settle" title="Choose the support a landslide hits (G)"><span>≋</span>Landslide</button>
+    <button data-tool="delete" title="Delete pole or node (X)"><span>✕</span>Delete</button>
+  </div>
+  <div class="hud" id="hud"></div>
+  <div class="walkpad" id="walkpad" hidden>
+    <button data-w="f">▲</button><button data-w="l">◀</button><button data-w="b">▼</button><button data-w="r">▶</button>
+    <button class="exit" id="bWalkExit">Exit walk</button>
+  </div>
+  <div class="legend" id="legend"><span class="g"></span>calm<span class="a"></span>working hard<span class="r"></span>failing</div>
+</main>
+
+<aside id="right" class="panel">
+  <section class="verdict" id="verdict"></section>
+  <section>
+    <h3>Forces of the hills</h3>
+    <label class="check"><input type="checkbox" id="lPeople"> People &amp; furniture on decks (3 kN/m²)</label>
+    <label class="check"><input type="checkbox" id="lMonsoon"> Monsoon — waterlogged roof</label>
+    <div class="lgroup">
+      <label class="check"><input type="checkbox" id="lWind"> Wind</label>
+      <div class="sub">
+        <div class="compass" id="compass" title="Drag to set wind direction"><div class="needle" id="needle"></div><span>N</span></div>
+        <div class="grow">
+          <div class="field"><label>Speed <output id="wsOut"></output></label><input type="range" id="lWs" min="10" max="70" step="1"></div>
+          <label class="check"><input type="checkbox" id="lCrest"> Hill-crest exposure</label>
+        </div>
+      </div>
+    </div>
+    <div class="lgroup">
+      <label class="check"><input type="checkbox" id="lQuake"> Earthquake push</label>
+      <div class="field sub1"><label>Lateral coefficient <output id="eqOut"></output></label><input type="range" id="lEq" min="0.02" max="0.4" step="0.01"></div>
+    </div>
+    <div class="lgroup">
+      <label class="check"><input type="checkbox" id="lFlood"> Jhiri flash flood</label>
+      <div class="field sub1"><label>Water rises <output id="frOut"></output></label><input type="range" id="lFr" min="0.2" max="5" step="0.1"></div>
+      <div class="field sub1"><label>Flow speed <output id="fvOut"></output></label><input type="range" id="lFv" min="0.5" max="6" step="0.1"></div>
+      <label class="check sub1"><input type="checkbox" id="lDebris"> Debris impact</label>
+    </div>
+    <div class="lgroup">
+      <label class="check"><input type="checkbox" id="lSettle"> Landslide under a plinth</label>
+      <div class="field sub1"><select id="lSm"><option value="washout">Ground washes out — plinth lost</option><option value="sink">Plinth sinks and creeps downhill</option></select></div>
+      <div class="field sub1" id="sinkField"><label>Sinks <output id="sdOut"></output></label><input type="range" id="lSd" min="0.005" max="0.1" step="0.005">
+        <p class="hint">Sinking is tested with stiff joints. Real lashed joints flex more, so read it as the worst case.</p></div>
+      <p class="hint sub1" id="settleHint">Pick the plinth with the Landslide tool.</p>
+    </div>
+    <div class="field"><label>Safety margin γ <output id="gOut"></output></label><input type="range" id="lGamma" min="1" max="3" step="0.1"></div>
+    <label class="check"><input type="checkbox" id="lNoMetal"> No-metal mode (lashing, pegs, bundles only)</label>
+  </section>
+  <section>
+    <h3>Break it</h3>
+    <p class="hint">Ramp every force up until something gives. Watch the order things fail.</p>
+    <button class="btn danger wide" id="bBreak">Break it</button>
+    <div id="breakOut"></div>
+  </section>
+  <section id="inspector"></section>
+</aside>
+
+<footer class="status" id="status"></footer>
+
+<div class="modal" id="gallery" hidden>
+  <div class="sheet">
+    <h2>Start something impossible</h2>
+    <p class="hint">Each starting point is fully editable — every slider, every pole.</p>
+    <div class="cards" id="presetCards"></div>
+    <button class="btn" data-close>Close</button>
+  </div>
+</div>
+<div class="modal" id="kitModal" hidden>
+  <div class="sheet small">
+    <h2>Scale-model kit</h2>
+    <div class="field"><label>Scale</label>
+      <select id="kitScale"><option value="10">1:10</option><option value="20" selected>1:20</option><option value="30">1:30</option><option value="50">1:50</option><option value="100">1:100</option></select></div>
+    <p class="hint">Opens a printable sheet: plan and two elevations with every pole numbered, the stick shopping list, joints to make, and a cut list in millimetres.</p>
+    <div class="row"><button class="btn primary" id="bKitGo">Open kit</button><button class="btn" data-close>Cancel</button></div>
+  </div>
+</div>
+<input type="file" id="fileIn" accept=".json,.bamboo.json,application/json" hidden>
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
