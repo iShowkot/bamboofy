@@ -364,24 +364,33 @@ body.film .walkpad { display: none !important; }
 .sp-bowl { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: sp-draw .5s .45s var(--ease) forwards; }
 .sp-leaf { fill: var(--gold); transform-box: fill-box; transform-origin: 0% 100%; animation: sp-leaf .5s .8s cubic-bezier(.3,1.5,.5,1) both; }
 .splash-word { font: 800 44px/1 "Manrope", var(--font); letter-spacing: -.04em; color: var(--text); margin-top: 18px; animation: sp-up .5s .9s var(--ease) both; }
-.splash-by { font-size: 15px; color: var(--text-2); margin-top: 8px; animation: sp-up .5s 1.05s var(--ease) both; }
+.splash-by { font-size: 11px; color: var(--text-2); margin-top: 10px; animation: sp-up .5s 1.05s var(--ease) both; }
 .splash-tag { font-size: 13px; color: var(--text-3); margin-top: 22px; animation: sp-up .5s 1.15s var(--ease) both; }
-.grove { width: 330px; height: 120px; margin-top: 26px; overflow: visible; }
-.grove-ground { stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; }
-.grove .seg { fill: var(--accent); transform-box: fill-box; transform-origin: 50% 100%; animation: sp-rise .26s cubic-bezier(.3,1.4,.6,1) both; }
-.grove .seg:nth-child(odd) { fill: color-mix(in srgb, var(--accent) 86%, var(--gold)); }
-.grove .leaf { fill: var(--gold); animation: sp-leaf .45s cubic-bezier(.3,1.6,.5,1) both; }
-.grove .leaf:last-of-type { fill: color-mix(in srgb, var(--gold) 55%, var(--accent)); }
-.grove .culm { transform-box: view-box; transform-origin: 50% 100%; animation: sp-sway 3.2s ease-in-out infinite alternate; }
-.grove .culm:nth-of-type(3n) { animation-duration: 2.6s; }
-.grove .culm:nth-of-type(3n+1) { animation-duration: 3.8s; }
-.splash-msg { margin-top: 14px; font-size: 13px; color: var(--text-3); min-height: 20px; transition: opacity .25s; }
-.splash-msg.swap { opacity: 0; }
-.splash.ready .splash-msg { color: var(--accent); font-weight: 600; }
-@keyframes sp-sway { from { transform: rotate(calc(var(--sway) * -1)); } to { transform: rotate(var(--sway)); } }
+.hut { width: 330px; height: 150px; margin-top: 26px; overflow: visible; }
+.hut-ground { stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; fill: none; stroke-dasharray: 100; stroke-dashoffset: 100; animation: sp-draw .5s ease-out forwards; }
+.h-rise { fill: var(--accent); transform-box: fill-box; transform-origin: 50% 100%; animation: sp-rise .4s cubic-bezier(.3,1.4,.6,1) both; }
+.h-stone { fill: var(--line-strong); animation: sp-up .3s ease-out both; }
+.h-deck { fill: var(--accent); transform-box: fill-box; transform-origin: 50% 50%; animation: h-grow-x .45s cubic-bezier(.3,1.3,.6,1) both; }
+.h-line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: sp-draw .5s ease-out forwards; }
+.h-line.thin { stroke-width: 2; stroke: var(--text-3); }
+.h-roof { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: sp-draw .55s ease-out forwards; }
+.h-roof.thin { stroke-width: 4; }
+.h-thatch { fill: var(--gold); opacity: 0; animation: h-fade .5s ease-out forwards; }
+.h-lamp { fill: var(--gold); opacity: 0; animation: h-glow 2.4s ease-in-out infinite alternate; }
+.h-head, .h-body { fill: var(--text-2); opacity: 0; animation: sp-up .4s ease-out forwards; }
+.h-talk { fill: none; stroke: var(--gold); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: sp-draw .4s ease-out forwards, h-pulse 1.6s 3.2s ease-in-out infinite; }
+.h-tree { fill: var(--accent); transform-box: view-box; animation: sp-up .5s ease-out both; }
+.h-tree path { fill: var(--gold); }
+@keyframes h-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes h-fade { to { opacity: .9; } }
+@keyframes h-glow { 0% { opacity: .55; filter: drop-shadow(0 0 0 var(--gold)); } 100% { opacity: 1; filter: drop-shadow(0 0 6px var(--gold)); } }
+@keyframes h-pulse { 50% { opacity: .35; } }
+.splash-by { animation-delay: 1.3s; }
+.splash-credit { font-size: 11px; color: var(--text-3); margin-top: 18px; animation: sp-up .5s 1.5s var(--ease) both; }
+.splash-credit b { color: var(--text-2); font-weight: 600; }
 @keyframes sp-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @keyframes sp-draw { to { stroke-dashoffset: 0; } }
 @keyframes sp-leaf { from { transform: scale(0) rotate(-25deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes sp-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes sp-load { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
-@media (prefers-reduced-motion: reduce) { .sp-bowl { stroke-dashoffset: 0; } .grove .culm { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .sp-bowl { stroke-dashoffset: 0; } .h-lamp, .h-talk { animation: none; opacity: 1; stroke-dashoffset: 0; } }

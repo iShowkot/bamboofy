@@ -756,7 +756,7 @@ function setMsg(t) {
   m.classList.add('swap'); setTimeout(() => { m.textContent = t; m.classList.remove('swap'); }, 220);
 }
 let splashI = 0;
-const splashTicker = setInterval(() => { splashI = (splashI + 1) % SPLASH_LINES.length; setMsg(SPLASH_LINES[splashI]); }, 750);
+const splashTicker = 0;
 function splashDone() {
   const el = $('#splash'); if (!el || el.classList.contains('out')) return;
   let seen = false; try { seen = !!localStorage.getItem('bamboofy.seen'); } catch {}
@@ -764,7 +764,7 @@ function splashDone() {
   const minMs = matchMedia('(prefers-reduced-motion: reduce)').matches ? 800 : film ? 1200 : seen ? 3500 : 4200;
   const close = () => { el.classList.add('out'); try { localStorage.setItem('bamboofy.seen', '1'); } catch {} setTimeout(() => el.remove(), 600); };
   const left = minMs - (performance.now() - splashStart);
-  const finish = () => { el.classList.add('ready'); clearInterval(splashTicker); setMsg('Ready to build'); setTimeout(close, 650); };
+  const finish = () => { el.classList.add('ready'); setTimeout(close, 450); };
   if (left <= 650) finish(); else setTimeout(finish, left - 650);
 }
 {
