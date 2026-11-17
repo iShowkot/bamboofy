@@ -69,6 +69,7 @@ button { cursor: pointer; }
 }
 #left { left: 0; width: var(--left); border-right: 1px solid var(--line); }
 #right { right: 0; width: var(--right); border-left: 1px solid var(--line); }
+.panel, #stage { transition: transform .22s ease, left .22s ease, right .22s ease; }
 .panel section { padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .panel h3 { font: 600 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .09em; color: var(--ink-3); margin: 4px 0 10px; }
 .panel h3:not(:first-child) { margin-top: 18px; }
@@ -226,3 +227,24 @@ body.film .walkpad { display: none !important; }
 .tour .btn { padding: 5px 10px; }
 .tour-target { outline: 3px solid var(--terra) !important; outline-offset: 3px; border-radius: 8px; position: relative; z-index: 65; }
 #viewport.tour-target { outline-offset: -6px; }
+
+/* collapsible side panels */
+.tabs .collapse { flex: 0 0 40px; display: grid; place-items: center; color: var(--ink-3); border-bottom-color: transparent; }
+.tabs .collapse:hover, .collapse.floating:hover { color: var(--ink); background: var(--paper); }
+.collapse.floating { position: sticky; top: 6px; float: right; margin: 6px 6px -34px 0; z-index: 3; width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--paper-2); border-radius: 8px; color: var(--ink-3); }
+.edge-tab { display: none; position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; align-items: center; gap: 6px;
+  writing-mode: vertical-rl; padding: 12px 7px; border: 1px solid var(--line); background: #fffdf8ee; color: var(--ink-2); font-size: 12px; font-weight: 600; letter-spacing: .04em; box-shadow: 0 6px 18px #2b252014; backdrop-filter: blur(6px); }
+.edge-tab:hover { color: var(--ink); background: #fff; }
+.edge-tab svg { writing-mode: horizontal-tb; }
+.edge-tab.left { left: 0; border-left: 0; border-radius: 0 10px 10px 0; }
+.edge-tab.right { right: 0; border-right: 0; border-radius: 10px 0 0 10px; }
+.edge-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); display: inline-block; }
+@media (min-width: 901px) {
+  body.collapse-left #left { transform: translateX(-102%); }
+  body.collapse-right #right { transform: translateX(102%); }
+  body.collapse-left #stage { left: 0; }
+  body.collapse-right #stage { right: 0; }
+  body.collapse-left #eLeft, body.collapse-right #eRight { display: flex; }
+  body.collapse-left .tools { left: 40px; }
+}
+@media (max-width: 900px) { .tabs .collapse, .collapse.floating { display: none; } }

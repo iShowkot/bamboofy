@@ -53,6 +53,9 @@
     <button class="on" data-tab="build">Build</button>
     <button data-tab="site">Site</button>
     <button data-tab="library">Materials</button>
+    <button class="collapse" id="cLeft" title="Collapse panel ( [ )" aria-label="Collapse build panel">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
   </nav>
   <section data-pane="build">
     <h3>Generators</h3>
@@ -89,6 +92,14 @@
 
 <main id="stage">
   <div id="viewport"></div>
+  <button class="edge-tab left" id="eLeft" title="Show build panel ( [ )" aria-label="Show build panel">
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Build</span>
+  </button>
+  <button class="edge-tab right" id="eRight" title="Show test panel ( ] )" aria-label="Show test panel">
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="edge-dot" id="eDot"></span><span id="eVerdict">Test</span>
+  </button>
   <div class="tools" role="toolbar" aria-label="Tools">
     <button data-tool="select" class="on" title="Select & orbit (V)"><span>⌖</span>Select</button>
     <button data-tool="pole" title="Add pole — click two points (P)"><span>╱</span>Pole</button>
@@ -112,6 +123,9 @@
 </main>
 
 <aside id="right" class="panel">
+  <button class="collapse floating" id="cRight" title="Collapse panel ( ] )" aria-label="Collapse test panel">
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
   <section class="verdict" id="verdict"></section>
   <section>
     <h3>Forces of the hills</h3>

@@ -112,6 +112,7 @@ function renderVerdict() {
   if (!r) return;
   const u = r.chk.maxU || 0;
   const v = verdictOf(u, r.res.mechanism);
+  updateEdgeVerdict(u, v.color);
   const totals = r.loads.totals;
   const kN = x => (x / 1000).toFixed(x > 100000 ? 0 : 1);
   const span = (() => { const b = viewer.bounds(); const s = b.getSize(b.min.clone()); return Math.max(s.x, s.z); })();
@@ -608,6 +609,20 @@ function toast(msg) {
   clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 2600);
 }
 
+// ---------- collapsible panels ----------
+function setPanel(side, collapsed) {
+  document.body.classList.toggle('collapse-' + side, collapsed);
+  try { localStorage.setItem('bamboofy.panels', JSON.stringify({ left: document.body.classList.contains('collapse-left'), right: document.body.classList.contains('collapse-right') })); } catch {}
+}
+function togglePanel(side) {
+  if (innerWidth <= 900) { document.body.classList.toggle('show-' + side); document.body.classList.remove('show-' + (side === 'left' ? 'right' : 'left')); return; }
+  setPanel(side, !document.body.classList.contains('collapse-' + side));
+}
+function updateEdgeVerdict(u, color) {
+  $('#eDot').style.background = color;
+  $('#eVerdict').textContent = u ? `Test · ${u > 9.99 ? '>999' : Math.round(u * 100)}%` : 'Test';
+}
+
 // ---------- film mode ----------
 function setFilm(on = !app.film) {
   if (on && viewer.walk) toggleWalk(false);
@@ -643,6 +658,7 @@ function showTour(i) {
   }
   const st = TOUR[i];
   const small = innerWidth <= 900;
+  if (!small && st.side) setPanel(st.side, false);
   document.body.classList.toggle('show-left', small && st.side === 'left');
   document.body.classList.toggle('show-right', small && st.side === 'right');
   const el = tourTarget(st);
@@ -729,6 +745,13 @@ function boot() {
   for (const b of $$('#exportMenu button')) b.onclick = () => exportAction(b.dataset.x);
   $('#bKitGo').onclick = openKit;
   for (const b of $$('[data-close]')) b.onclick = () => { const m = b.closest('.modal'); m.hidden = true; if (m.id === 'gallery') maybeTour(); };
+  try { const ps = JSON.parse(localStorage.getItem('bamboofy.panels') || '{}'); if (ps.left) setPanel('left', true); if (ps.right) setPanel('right', true); } catch {}
+  $('#cLeft').onclick = () => setPanel('left', true);
+  $('#cRight').onclick = () => setPanel('right', true);
+  $('#eLeft').onclick = () => setPanel('left', false);
+  $('#eRight').onclick = () => setPanel('right', false);
+  $('#bLeft').onclick = () => togglePanel('left');
+  $('#bRight').onclick = () => togglePanel('right');
   $('#bFilm').onclick = () => setFilm(true);
   $('#fExit').onclick = () => setFilm(false);
   $('#fOrbit').onclick = () => { $('#fOrbit').classList.toggle('on'); viewer.controls.autoRotate = $('#fOrbit').classList.contains('on'); };
@@ -750,16 +773,14 @@ function boot() {
     renderGenerators(); commit({ regen: true, frame: true });
   };
   $('#bResetLib').onclick = () => { snapshot(); delete app.model.library; renderLibrary(); commit(); };
-  $$('.tabs button').forEach(b => b.onclick = () => {
-    $$('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $$('.tabs button[data-tab]').forEach(b => b.onclick = () => {
+    $$('.tabs button[data-tab]').forEach(x => x.classList.toggle('on', x === b));
     $$('#left [data-pane]').forEach(p => { p.hidden = p.dataset.pane !== b.dataset.tab; });
   });
   $$('.tools button').forEach(b => b.onclick = () => setTool(b.dataset.tool));
   $('#workH').oninput = e => { $('#whOut').textContent = (+e.target.value).toFixed(1) + ' m'; setTool(app.tool); };
   $('#snapGround').onchange = () => setTool(app.tool);
   $('#bBreak').onclick = runBreak;
-  $('#bLeft').onclick = () => { document.body.classList.toggle('show-left'); document.body.classList.remove('show-right'); };
-  $('#bRight').onclick = () => { document.body.classList.toggle('show-right'); document.body.classList.remove('show-left'); };
 
   window.addEventListener('keydown', e => {
     if (e.target.matches('input, select, textarea')) return;
@@ -769,6 +790,8 @@ function boot() {
     if (!$('#tour').hidden) { if (k === 'escape') showTour(-1); if (k === 'arrowright' || k === 'enter') showTour(tourI + 1); if (k === 'arrowleft') showTour(tourI - 1); return; }
     if (app.film) { if (k === 'escape' || k === 'h') setFilm(false); if (k === 'b') runBreak(); if (k === 'o') $('#fOrbit').click(); if (k === 'r') { clearBreak(); render(); } return; }
     if (k === 'h') { setFilm(true); return; }
+    if (e.key === '[') { togglePanel('left'); return; }
+    if (e.key === ']') { togglePanel('right'); return; }
     if (viewer.walk) { if (k === 'escape') toggleWalk(false); return; }
     if (k === 'escape') { if (app.poleStart) { app.poleStart = null; viewer.setGhost(null); } else setTool('select'); }
     const toolKeys = { v: 'select', p: 'pole', f: 'support', l: 'load', g: 'settle', x: 'delete' };
