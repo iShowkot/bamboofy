@@ -1,7 +1,7 @@
 // Offline cache: once loaded, Banshala works on the hillside without signal.
 const V = 'banshala-v1';
 const FILES = ['./', 'index.html', 'style.css', 'icon.svg', 'manifest.webmanifest',
-  'vendor/three.module.js', 'vendor/OrbitControls.js',
+  'vendor/three.module.js', 'vendor/addons/controls/OrbitControls.js',
   'src/main.js', 'src/render.js', 'src/model.js', 'src/generators.js', 'src/materials.js',
   'src/solver.js', 'src/analysis.js', 'src/loads.js', 'src/terrain.js', 'src/exports.js'];
 self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));

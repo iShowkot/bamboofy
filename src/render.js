@@ -1,6 +1,6 @@
 // Banshala renderer: drafting-table mode, presence mode, stress overlay, walk-inside view.
-import * as THREE from '../vendor/three.module.js';
-import { OrbitControls } from '../vendor/OrbitControls.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { terrainHeight, normalWaterLevel } from './terrain.js';
 import { section, SPECIES } from './materials.js';
 
