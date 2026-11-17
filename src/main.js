@@ -750,19 +750,26 @@ function maybeTour() { let seen = false; try { seen = !!localStorage.getItem('ba
 // ---------- splash ----------
 // Shown on every open while the app loads; quick for returning visitors, skippable with a tap or key.
 const splashStart = performance.now();
+const SPLASH_LINES = ['Soaking the culms…', 'Curing in the shade…', 'Bending the arches…', 'Lashing the joints…', 'Setting the stone plinths…', 'Listening for the monsoon…', 'Asking the hills…'];
+function setMsg(t) {
+  const m = document.getElementById('splashMsg'); if (!m) return;
+  m.classList.add('swap'); setTimeout(() => { m.textContent = t; m.classList.remove('swap'); }, 220);
+}
+let splashI = 0;
+const splashTicker = setInterval(() => { splashI = (splashI + 1) % SPLASH_LINES.length; setMsg(SPLASH_LINES[splashI]); }, 750);
 function splashDone() {
   const el = $('#splash'); if (!el || el.classList.contains('out')) return;
   let seen = false; try { seen = !!localStorage.getItem('bamboofy.seen'); } catch {}
   const film = /(^|[?&#])film\b/.test(location.search + location.hash);
-  const minMs = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : film ? 500 : seen ? 1300 : 2200;
-  el.classList.add('ready');
+  const minMs = matchMedia('(prefers-reduced-motion: reduce)').matches ? 800 : film ? 1200 : seen ? 3500 : 4200;
   const close = () => { el.classList.add('out'); try { localStorage.setItem('bamboofy.seen', '1'); } catch {} setTimeout(() => el.remove(), 600); };
   const left = minMs - (performance.now() - splashStart);
-  if (left <= 0) close(); else setTimeout(close, left);
+  const finish = () => { el.classList.add('ready'); clearInterval(splashTicker); setMsg('Ready to build'); setTimeout(close, 650); };
+  if (left <= 650) finish(); else setTimeout(finish, left - 650);
 }
 {
   const el = document.getElementById('splash');
-  const skip = () => el && !el.classList.contains('out') && (el.classList.add('out'), setTimeout(() => el.remove(), 600));
+  const skip = () => el && !el.classList.contains('out') && (clearInterval(splashTicker), el.classList.add('out'), setTimeout(() => el.remove(), 600));
   el?.addEventListener('click', skip);
   window.addEventListener('keydown', skip, { once: true });
 }

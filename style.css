@@ -366,14 +366,22 @@ body.film .walkpad { display: none !important; }
 .splash-word { font: 800 44px/1 "Manrope", var(--font); letter-spacing: -.04em; color: var(--text); margin-top: 18px; animation: sp-up .5s .9s var(--ease) both; }
 .splash-by { font-size: 15px; color: var(--text-2); margin-top: 8px; animation: sp-up .5s 1.05s var(--ease) both; }
 .splash-tag { font-size: 13px; color: var(--text-3); margin-top: 22px; animation: sp-up .5s 1.15s var(--ease) both; }
-.splash-bar { width: 140px; height: 3px; border-radius: 3px; background: var(--surface-3); margin-top: 22px; overflow: hidden; }
-.splash-bar i { display: block; height: 100%; width: 40%; border-radius: 3px; background: var(--accent); animation: sp-load 1.1s ease-in-out infinite; }
-.splash-go { display: none; margin-top: 18px; font-size: 13px; font-weight: 600; color: var(--accent); }
-.splash.ready .splash-bar { display: none; }
-.splash.ready.wait .splash-go { display: block; animation: sp-up .35s var(--ease) both; }
+.grove { width: 330px; height: 120px; margin-top: 26px; overflow: visible; }
+.grove-ground { stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; }
+.grove .seg { fill: var(--accent); transform-box: fill-box; transform-origin: 50% 100%; animation: sp-rise .26s cubic-bezier(.3,1.4,.6,1) both; }
+.grove .seg:nth-child(odd) { fill: color-mix(in srgb, var(--accent) 86%, var(--gold)); }
+.grove .leaf { fill: var(--gold); animation: sp-leaf .45s cubic-bezier(.3,1.6,.5,1) both; }
+.grove .leaf:last-of-type { fill: color-mix(in srgb, var(--gold) 55%, var(--accent)); }
+.grove .culm { transform-box: view-box; transform-origin: 50% 100%; animation: sp-sway 3.2s ease-in-out infinite alternate; }
+.grove .culm:nth-of-type(3n) { animation-duration: 2.6s; }
+.grove .culm:nth-of-type(3n+1) { animation-duration: 3.8s; }
+.splash-msg { margin-top: 14px; font-size: 13px; color: var(--text-3); min-height: 20px; transition: opacity .25s; }
+.splash-msg.swap { opacity: 0; }
+.splash.ready .splash-msg { color: var(--accent); font-weight: 600; }
+@keyframes sp-sway { from { transform: rotate(calc(var(--sway) * -1)); } to { transform: rotate(var(--sway)); } }
 @keyframes sp-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @keyframes sp-draw { to { stroke-dashoffset: 0; } }
 @keyframes sp-leaf { from { transform: scale(0) rotate(-25deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes sp-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes sp-load { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
-@media (prefers-reduced-motion: reduce) { .sp-bowl { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .sp-bowl { stroke-dashoffset: 0; } .grove .culm { animation: none; } }
