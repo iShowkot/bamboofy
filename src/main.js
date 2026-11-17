@@ -747,6 +747,26 @@ function showTour(i) {
 function startTour() { if (app.film) setFilm(false); $('#gallery').hidden = true; showTour(0); }
 function maybeTour() { let seen = false; try { seen = !!localStorage.getItem('bamboofy.toured'); } catch {} if (!seen) setTimeout(startTour, 500); }
 
+// ---------- splash ----------
+// Shown on every open while the app loads; quick for returning visitors, skippable with a tap or key.
+const splashStart = performance.now();
+function splashDone() {
+  const el = $('#splash'); if (!el || el.classList.contains('out')) return;
+  let seen = false; try { seen = !!localStorage.getItem('bamboofy.seen'); } catch {}
+  const film = /(^|[?&#])film\b/.test(location.search + location.hash);
+  const minMs = matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : film ? 500 : seen ? 1300 : 2200;
+  el.classList.add('ready');
+  const close = () => { el.classList.add('out'); try { localStorage.setItem('bamboofy.seen', '1'); } catch {} setTimeout(() => el.remove(), 600); };
+  const left = minMs - (performance.now() - splashStart);
+  if (left <= 0) close(); else setTimeout(close, left);
+}
+{
+  const el = document.getElementById('splash');
+  const skip = () => el && !el.classList.contains('out') && (el.classList.add('out'), setTimeout(() => el.remove(), 600));
+  el?.addEventListener('click', skip);
+  window.addEventListener('keydown', skip, { once: true });
+}
+
 // ---------- boot ----------
 const viewer = new Viewer($('#viewport'));
 const drawer = new PoleDrawer(viewer, {
@@ -925,3 +945,4 @@ function boot() {
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 boot();
+requestAnimationFrame(() => requestAnimationFrame(splashDone));
