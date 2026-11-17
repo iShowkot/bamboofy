@@ -5,6 +5,10 @@ import { terrainHeight, normalWaterLevel } from './terrain.js';
 import { section, SPECIES } from './materials.js';
 
 const PAPER = 0xefe8da, INK = 0x2b2520;
+const PALETTES = {
+  light: { bg: 0xefe8da, ink: 0x2b2520, terrain: 0xe7dfcd, grid: 0x7a6c55, contour: 0x8a7d66, member: 0xe2d4b4, timber: 0x8b6b4a, node: 0x2b2520, blend: 0xefe8da },
+  dark:  { bg: 0x1c1a17, ink: 0xe9dfcc, terrain: 0x26231f, grid: 0xb3a68f, contour: 0x8f846f, member: 0xcdb78c, timber: 0x9a7552, node: 0xe9dfcc, blend: 0x1c1a17 }
+};
 const SKIN_COLORS = { thatch: 0xc8a25a, leaves: 0x7b8a3e, mat: 0xd8c08a, clay: 0xb07a4f, deck: 0xa8875a };
 
 export function stressColor(u, out = new THREE.Color()) {
@@ -115,6 +119,7 @@ export class Viewer {
     this.controls.maxPolarAngle = Math.PI * 0.495;
 
     this.mode = 'drafting';
+    this.theme = 'light';
     this.overlay = true;
     this.deformScale = 0;
     this.hidden = new Set();
@@ -222,10 +227,12 @@ export class Viewer {
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
   }
 
+  get pal() { return PALETTES[this.theme] || PALETTES.light; }
+  setTheme(theme) { this.theme = theme; this.inkMat.color.set(this.pal.ink); this.applyMode(); if (this.model) this.update(this.model, this.state); }
   setMode(mode) { this.mode = mode; this.applyMode(); if (this.model) this.update(this.model, this.state); }
   applyMode() {
     const p = this.mode === 'presence';
-    this.scene.background = p ? null : new THREE.Color(PAPER);
+    this.scene.background = p ? null : new THREE.Color(this.pal.bg);
     this.scene.fog = p ? new THREE.FogExp2(HAZE, 0.0055) : null;
     this.scene.environment = p ? this.envMap : null;
     this.sky.visible = this.hills.visible = p;
@@ -243,7 +250,7 @@ export class Viewer {
   }
 
   buildTerrain(t, force = false) {
-    const key = JSON.stringify(t) + this.mode + (this.waterRise || 0) + !!this.raining;
+    const key = JSON.stringify(t) + this.mode + this.theme + (this.waterRise || 0) + !!this.raining;
     if (!force && key === this.terrainKey) return;
     this.terrainKey = key; this.terrainModel = t;
     disposeTree(this.terrainGroup, new Set());
@@ -267,7 +274,7 @@ export class Viewer {
         const k = Math.min(1, steep * 1.2);
         c.setRGB(grass[0] + (soil[0] - grass[0]) * k, grass[1] + (soil[1] - grass[1]) * k, grass[2] + (soil[2] - grass[2]) * k);
       } else {
-        c.setHex(0xe7dfcd);
+        c.setHex(this.pal.terrain);
       }
       col.set([c.r, c.g, c.b], i * 3);
     }
@@ -291,12 +298,12 @@ export class Viewer {
       }
       for (const [arr, op] of [[minor, presence ? 0.08 : 0.22], [major, presence ? 0.16 : 0.42]]) {
         const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
-        this.terrainGroup.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: presence ? 0x2d3a1e : 0x7a6c55, transparent: true, opacity: op })));
+        this.terrainGroup.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: presence ? 0x2d3a1e : this.pal.grid, transparent: true, opacity: op })));
       }
     }
     const lines = marchingContours((x, z) => terrainHeight(t, x, z), presence ? 90 : size, 110, 0.5);
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lines, 3));
-    const contour = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: this.mode === 'presence' ? 0x3d4a25 : 0x8a7d66, transparent: true, opacity: this.mode === 'presence' ? 0.12 : 0.55 }));
+    const contour = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: this.mode === 'presence' ? 0x3d4a25 : this.pal.contour, transparent: true, opacity: this.mode === 'presence' ? 0.12 : 0.55 }));
     this.terrainGroup.add(contour);
     if (t.jhiri) {
       const wl = normalWaterLevel(t) + (this.waterRise || 0);
@@ -384,7 +391,7 @@ export class Viewer {
           if (species.kind === 'timber') col.setHSL(0.07, 0.42, 0.28 + 0.06 * hash(seed * 5.1));
           else col.setHSL(0.095 + 0.025 * hash(seed * 3.3) + (hash(seed * 7.7) > 0.85 ? 0.04 : 0), 0.55 + 0.15 * hash(seed * 2.2), 0.56 + 0.1 * hash(seed * 4.4));
         }
-        else col.setHex(species.kind === 'timber' ? 0x8b6b4a : 0xe2d4b4);
+        else col.setHex(species.kind === 'timber' ? this.pal.timber : this.pal.member);
         if (this.highlight?.kind === 'member' && this.highlight.id === m.id) col.setHex(0x1e5bd8);
         if (state.failed?.has(m.id)) col.setHex(0xc0392b);
         inst.setColorAt(k, col);
@@ -424,7 +431,7 @@ export class Viewer {
       if (this.failedNodes.has(n.id)) col.setHex(0xc0392b);
       else if (this.highlight?.kind === 'node' && this.highlight.id === n.id) col.setHex(0x1e5bd8);
       else if (this.overlay && jointU?.has(n.id)) stressColor(jointU.get(n.id), col);
-      else col.setHex(presence ? 0x5b4630 : INK);
+      else col.setHex(presence ? 0x5b4630 : this.pal.node);
       ninst.setColorAt(j, col);
       this.nodeIds[j] = n.id;
       j++;
@@ -460,7 +467,7 @@ export class Viewer {
       if (p.nodes.some(id => !nm.has(id))) continue;
       const pts = p.nodes.map(P);
       col.setHex(SKIN_COLORS[p.skin] || SKIN_COLORS.thatch);
-      if (!presence) col.lerp(new THREE.Color(PAPER), 0.25);
+      if (!presence) col.lerp(new THREE.Color(this.pal.blend), 0.25);
       for (let i = 1; i + 1 < pts.length; i++) for (const v of [pts[0], pts[i], pts[i + 1]]) { pos.push(v.x, v.y, v.z); pcol.push(col.r, col.g, col.b); }
     }
     if (pos.length && !this.hideSkins) {

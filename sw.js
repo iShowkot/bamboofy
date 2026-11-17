@@ -1,5 +1,5 @@
 // Offline cache: once loaded, Bamboofy works on the hillside without signal.
-const V = 'bamboofy-v2';
+const V = 'bamboofy-v3';
 const FILES = ['./', 'index.html', 'style.css', 'icon.svg', 'manifest.webmanifest',
   'vendor/three.module.js', 'vendor/addons/controls/OrbitControls.js', 'vendor/addons/controls/TransformControls.js',
   'src/main.js', 'src/render.js', 'src/model.js', 'src/generators.js', 'src/materials.js',

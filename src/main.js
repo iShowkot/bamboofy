@@ -93,12 +93,12 @@ function autoDeform(maxDisp) {
 
 // ---------- verdict ----------
 function verdictOf(u, mech) {
-  if (mech) return { word: 'Collapses', color: 'var(--red)', sub: 'It cannot stand as drawn — it moves like a mechanism. Add bracing or supports.' };
-  if (u === 0) return { word: 'Empty lot', color: 'var(--ink-3)', sub: 'Add a generator or draw your first pole.' };
+  if (mech) return { word: 'Collapses', color: 'var(--bad)', sub: 'It cannot stand as drawn — it moves like a mechanism. Add bracing or supports.' };
+  if (u === 0) return { word: 'Empty lot', color: 'var(--text-3)', sub: 'Add a generator or draw your first pole.' };
   if (u < 0.5) return { word: 'Stands, calmly', color: '#5c9e5c', sub: 'Lots of reserve. You could push this form much further.' };
   if (u < 0.85) return { word: 'Stands', color: '#8fa04f', sub: 'Working, with healthy reserve.' };
-  if (u <= 1) return { word: 'On the edge', color: 'var(--amber)', sub: 'Standing, but close to its limit under these forces.' };
-  return { word: 'Fails', color: 'var(--red)', sub: 'Something gives under these forces. Find it below, then fix it.' };
+  if (u <= 1) return { word: 'On the edge', color: 'var(--warn)', sub: 'Standing, but close to its limit under these forces.' };
+  return { word: 'Fails', color: 'var(--bad)', sub: 'Something gives under these forces. Find it below, then fix it.' };
 }
 
 function describe(it) {
@@ -138,6 +138,7 @@ function renderVerdict() {
       ${totals.point ? `<dt>Hung loads</dt><dd>${kN(totals.point)} kN</dd>` : ''}
     </dl>
     ${r.chk.critical ? `<div class="critical" id="goCritical" title="Select it">Weakest link: ${describe(r.chk.critical)} · ${r.chk.critical.u > 9.99 ? '>999' : (r.chk.critical.u * 100).toFixed(0)}%</div>` : ''}
+    <div class="disclaimer">Indicative physics. A structural engineer must verify a design before it is built.</div>
   `;
   const gc = $('#goCritical');
   if (gc) gc.onclick = () => { const c = r.chk.critical; select(c.kind === 'member' ? { kind: 'member', id: c.id } : { kind: 'node', id: c.id }); };
@@ -149,7 +150,7 @@ function renderStatus() {
   const culms = m.members.reduce((a, x) => a + (x.bundle || 1), 0);
   $('#status').innerHTML = `<span><b>${m.members.length}</b> poles · <b>${culms}</b> culms</span><span><b>${m.nodes.length}</b> joints</span><span><b>${m.panels.length}</b> skin panels</span>
   <span>solved in <b>${r ? r.ms.toFixed(0) : '–'} ms</b>${r?.res?.dof ? ` · ${r.res.dof} DOF` : ''}</span>
-  <span>${m.noMetal ? '<b>no-metal mode</b>' : ''}</span><span style="flex:1"></span><span>indicative physics — final design must be verified by a structural engineer</span>`;
+  ${m.noMetal ? '<span><b>no-metal mode</b></span>' : ''}`;
 }
 
 // ---------- inspector ----------
@@ -178,7 +179,7 @@ function renderInspector() {
     const sp = L[m.species];
     const len = f?.L ?? 0;
     el.innerHTML = `<h3>Selected pole</h3>
-      <div class="title">Pole #${m.id} · ${m.role || 'frame'}${m.gen ? ' <small style="color:var(--ink-3)">(generated)</small>' : ''}</div>
+      <div class="title">Pole #${m.id} · ${m.role || 'frame'}${m.gen ? ' <small style="color:var(--text-3)">(generated)</small>' : ''}</div>
       ${bar(u)}<div class="note">${u !== undefined ? (u * 100).toFixed(0) + '% of capacity' : ''}${f ? ` · ${f.N < 0 ? 'compression' : 'tension'} ${(Math.abs(f.N) / 1000).toFixed(2)} kN · bending ${(f.M / 1000).toFixed(2)} kN·m · length ${len.toFixed(2)} m` : ''}</div>
       <div class="field"><label>Species</label><select id="iSpecies">${Object.entries(L).map(([k, v]) => `<option value="${k}" ${k === m.species ? 'selected' : ''}>${v.name} — ${v.latin}</option>`).join('')}</select></div>
       <div class="row"><div class="field" style="flex:1"><label>Ø mm</label><input type="number" id="iD" value="${m.D ?? sp.D}"></div>
@@ -816,7 +817,7 @@ function boot() {
     viewer.setRain(app.scenario.monsoon && b.dataset.mode === 'presence');
     render();
   });
-  const chip = (id, fn) => $(id).onclick = () => { $(id).classList.toggle('on'); fn($(id).classList.contains('on')); render(); };
+  const chip = (id, fn) => $(id).onclick = () => { const on = $(id).classList.toggle('on'); $(id).setAttribute('aria-pressed', on); fn(on); render(); };
   chip('#tStress', on => { viewer.overlay = on; viewer.applyMode(); $('#legend').hidden = !on; });
   chip('#tDeform', on => { viewer.deformScale = on && app.result?.res?.maxDisp ? autoDeform(app.result.res.maxDisp) : 0; toast(on ? `Movement exaggerated ×${viewer.deformScale.toFixed(0)}` : 'True shape'); });
   chip('#tSkins', on => { viewer.hideSkins = !on; });
@@ -828,6 +829,20 @@ function boot() {
     b.onpointerup = b.onpointerleave = () => viewer.walkMove(0, 0);
   }
   $('#bUndo').onclick = undo; $('#bRedo').onclick = redo;
+  const closeApp = () => { $('#appMenu').hidden = true; $('#bApp').setAttribute('aria-expanded', 'false'); };
+  $('#bApp').onclick = e => { e.stopPropagation(); const open = $('#appMenu').hidden; $('#exportMenu').hidden = true; $('#appMenu').hidden = !open; $('#bApp').setAttribute('aria-expanded', String(open)); };
+  document.addEventListener('click', closeApp);
+  for (const b of $$('#appMenu button')) b.addEventListener('click', closeApp);
+  const applyTheme = t => {
+    document.documentElement.dataset.theme = t;
+    $('#bTheme').textContent = t === 'dark' ? 'Light theme' : 'Dark theme';
+    document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#23201c' : '#f7f3ea';
+    viewer.setTheme(t);
+    try { localStorage.setItem('bamboofy.theme', t); } catch {}
+  };
+  let theme = 'light'; try { theme = localStorage.getItem('bamboofy.theme') || 'light'; } catch {}
+  applyTheme(theme);
+  $('#bTheme').onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   $('#bNew').onclick = openGallery;
   $('#bOpen').onclick = () => $('#fileIn').click();
   $('#fileIn').onchange = async e => {
@@ -837,7 +852,7 @@ function boot() {
     e.target.value = '';
   };
   $('#bSave').onclick = () => exportAction('json');
-  $('#bExport').onclick = e => { e.stopPropagation(); $('#exportMenu').hidden = !$('#exportMenu').hidden; };
+  $('#bExport').onclick = e => { e.stopPropagation(); $('#appMenu').hidden = true; $('#exportMenu').hidden = !$('#exportMenu').hidden; };
   document.addEventListener('click', () => { $('#exportMenu').hidden = true; });
   for (const b of $$('#exportMenu button')) b.onclick = () => exportAction(b.dataset.x);
   $('#bKitGo').onclick = openKit;
