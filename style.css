@@ -257,7 +257,7 @@ body.film .walkpad { display: none !important; }
 .pb-cap { color: var(--ink-3); margin-left: -4px; }
 .pb-len { display: flex; align-items: center; gap: 6px; }
 .pb-seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.pb-seg button { border: 0; background: none; padding: 4px 9px; border-right: 1px solid var(--line); min-width: 28px; }
+.pb-seg button { border: 0; background: none; padding: 4px 9px; border-right: 1px solid var(--line); min-width: 28px; white-space: nowrap; }
 .pb-seg button:last-child { border-right: 0; }
 .pb-seg button.on { background: var(--ink); color: var(--paper); }
 .pb-axis .ax-x.on { background: #d2412f; } .pb-axis .ax-y.on { background: #3f9b46; } .pb-axis .ax-z.on { background: #2f6fd8; }
@@ -293,3 +293,6 @@ body.film .viewcube { display: none; }
 .axis-triad { position: absolute; left: 14px; bottom: 14px; width: 80px; height: 80px; z-index: 5; pointer-events: auto; }
 body.film .axis-triad { display: none; }
 @media (max-width: 900px) { .axis-triad { bottom: 150px; width: 64px; height: 64px; } }
+
+.pb-len input.locked { background: #fbe9df; border-color: var(--terra); color: var(--terra); font-weight: 600; }
+#pbTilt, #pbHead { width: 52px; }

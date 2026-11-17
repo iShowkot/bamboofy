@@ -461,7 +461,7 @@ function setTool(t) {
   if (t !== 'select') attachGizmo(null);
   else if (app.sel?.kind === 'node') attachGizmo(app.sel.id);
   const hints = {
-    select: '', pole: 'Click the ground to plant a pole · move up to raise it (Z, blue) · X red and Y green are level · type a length + Enter · Esc to finish.',
+    select: '', pole: 'Click the ground to plant a pole · move up to raise it (Z) · for an angle, type a Tilt (e.g. 30) in the bar and swing the mouse · type a length + Enter · Esc to finish.',
     support: 'Click a joint to add or remove a stone plinth.', load: 'Click a joint to hang 5 kN on it (edit in the inspector).',
     settle: 'Click the plinth the hillside slips away from.', delete: 'Click a pole or joint to delete it.'
   };
@@ -752,7 +752,11 @@ const drawer = new PoleDrawer(viewer, {
   commit: poleCommit,
   stockLength: () => lib()[poleOpts.species]?.stock,
   onLength: len => { const el = $('#pbLen'); if (document.activeElement !== el) el.placeholder = len ? len.toFixed(2) : '—'; },
-  onLock: ax => $$('#pbAxis button').forEach(b => b.classList.toggle('on', (b.dataset.ax || null) === ax))
+  onLock: ax => $$('#pbAxis button').forEach(b => b.classList.toggle('on', (b.dataset.ax || null) === ax)),
+  onAngles: (tilt, heading) => {
+    for (const [id, v] of [['#pbTilt', tilt], ['#pbHead', heading]]) { const el = $(id); if (document.activeElement !== el && !el.classList.contains('locked')) el.placeholder = Math.round(v) % (id === '#pbHead' ? 360 : 361); }
+  },
+  onAngleLocks: () => { for (const id of ['#pbTilt', '#pbHead']) { $(id).value = ''; $(id).classList.remove('locked'); } }
 });
 const viewcube = new ViewCube(viewer, $('#stage'));
 viewer.tickers = [() => viewcube.sync(), () => { if (gizmoNode != null && !gizmoDragging) { const n = app.model?.nodes.find(x => x.id === gizmoNode); if (n) gizmoProxy.position.set(n.x, n.y, n.z); else attachGizmo(null); } }];
@@ -774,6 +778,20 @@ function boot() {
     if (e.key === 'Enter') { if (!drawer.commitLength(e.target.value)) toast('Click a start point first'); e.target.value = ''; e.target.blur(); }
     if (e.key === 'Escape') { e.target.value = ''; e.target.blur(); }
   });
+  const angleInput = id => {
+    const el = $(id);
+    const apply = () => {
+      const t = $('#pbTilt').value.trim(), h = $('#pbHead').value.trim();
+      const tv = t === '' ? null : Math.max(0, Math.min(180, parseFloat(t)));
+      const hv = h === '' ? null : ((parseFloat(h) % 360) + 360) % 360;
+      $('#pbTilt').classList.toggle('locked', tv != null && !isNaN(tv));
+      $('#pbHead').classList.toggle('locked', hv != null && !isNaN(hv));
+      drawer.setAngles(isNaN(tv) ? null : tv, isNaN(hv) ? null : hv);
+    };
+    el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { apply(); el.blur(); } if (e.key === 'Escape') { el.value = ''; apply(); el.blur(); } });
+    el.addEventListener('change', apply);
+  };
+  angleInput('#pbTilt'); angleInput('#pbHead');
   setupGizmo();
 
   try {
