@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" alt="Bamboofy" width="420"></p>
+
 # Bamboofy
 
 **A free, open-source bamboo design lab: from a wild idea to a scale model to a site.**

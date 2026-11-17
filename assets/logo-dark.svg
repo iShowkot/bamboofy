@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 120" role="img" aria-label="Bamboofy"><defs><mask id="logo-dark-n" maskUnits="userSpaceOnUse"><rect width="120" height="120" fill="#fff"/><path d="M28 40 H50 M28 66 H50" stroke="#000" stroke-width="3.5"/></mask></defs>
+<g mask="url(#logo-dark-n)"><rect x="30" y="14" width="18" height="90" rx="9" fill="#a9c062"/></g>
+<path d="M48 58 C 96 50, 98 108, 48 100" fill="none" stroke="#a9c062" stroke-width="12" stroke-linecap="round"/>
+<path d="M48 26 C 62 8, 86 8, 96 14 C 86 28, 64 34, 48 26 Z" fill="#b9862a"/>
+<text x="116" y="88" font-family="Manrope, 'Avenir Next', 'Segoe UI', system-ui, sans-serif" font-weight="800" font-size="72" letter-spacing="-2.5" fill="#f0e8da">bamboofy</text></svg>

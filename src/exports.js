@@ -167,7 +167,10 @@ export function kitHTML(model, lib, scale) {
 <style>body{font-family:system-ui,sans-serif;color:#2b2520;max-width:960px;margin:24px auto;padding:0 16px}h1,h2{font-family:Georgia,serif;font-weight:500}
 table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid #ddd3bf;padding:4px 6px;text-align:left}th{background:#efe8da}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.muted{color:#7a6e5d}@media print{.noprint{display:none}}</style></head><body>
-<p class="muted">Bamboofy — open-source bamboo design lab · scale-model kit</p>
+<p class="muted" style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 120 120" width="28" height="28" aria-hidden="true"><defs><mask id="kt-n" maskUnits="userSpaceOnUse"><rect width="120" height="120" fill="#fff"/><path d="M28 40 H50 M28 66 H50" stroke="#000" stroke-width="3.5"/></mask></defs>
+<g mask="url(#kt-n)"><rect x="30" y="14" width="18" height="90" rx="9" fill="#5d7a2b"/></g>
+<path d="M48 58 C 96 50, 98 108, 48 100" fill="none" stroke="#5d7a2b" stroke-width="12" stroke-linecap="round"/>
+<path d="M48 26 C 62 8, 86 8, 96 14 C 86 28, 64 34, 48 26 Z" fill="#b9862a"/></svg><b style="color:#2a241e;font-weight:800;letter-spacing:-.03em">bamboofy</b> · open-source bamboo design lab · scale-model kit</p>
 <h1>${esc(model.name)} <span class="muted">at 1:${scale}</span></h1>
 <button class="noprint" onclick="print()">Print</button>
 <h2>Drawings</h2>
